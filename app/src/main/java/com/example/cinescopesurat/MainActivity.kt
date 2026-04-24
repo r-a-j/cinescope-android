@@ -28,6 +28,8 @@ import com.example.cinescopesurat.ui.screens.PulseScreen
 import com.example.cinescopesurat.ui.screens.SettingsScreen
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.ThemeViewModel
+import io.github.fletchmckee.liquid.liquefiable
+import io.github.fletchmckee.liquid.rememberLiquidState
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -65,12 +67,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     val navController = rememberNavController()
+    val liquidState = rememberLiquidState()
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
             navController = navController,
             startDestination = Route.Pulse,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .liquefiable(liquidState),
         ) {
             composable<Route.Pulse> { PulseScreen() }
             composable<Route.Oracle> { PlaceholderScreen("Oracle") }
@@ -82,7 +87,7 @@ fun MainScreen() {
         }
         
         Box(modifier = Modifier.align(Alignment.BottomCenter)) {
-            BottomNavBar(navController)
+            BottomNavBar(navController, liquidState)
         }
     }
 }

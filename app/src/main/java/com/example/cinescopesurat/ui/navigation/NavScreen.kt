@@ -27,7 +27,7 @@ data class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem(Route.Pulse, "Pulse", Icons.Default.Bolt, Color(0xFFF85149)),
     BottomNavItem(Route.Oracle, "Oracle", Icons.Default.AutoAwesome, Color(0xFF79C0FF)),
-    BottomNavItem(Route.Vault, "Vault", Icons.Default.GridView, Color.White),
+    BottomNavItem(Route.Vault, "Vault", Icons.Default.VideoLibrary, Color(0xFFE50914)),
     BottomNavItem(Route.SocialHub, "Social Hub", Icons.Default.Group, Color(0xFFD2A8FF)),
     BottomNavItem(Route.Identity, "Identity", Icons.Default.Person, Color(0xFFF0883E)),
     BottomNavItem(Route.Search, "Search", Icons.Default.Search, Color.White),
