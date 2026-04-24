@@ -1,0 +1,28 @@
+# Gradle files
+.gradle/
+build/
+/*/build/
+
+# IDE files
+.idea/
+*.iml
+
+# Local configuration
+local.properties
+google-services.json
+app/google-services.json
+
+# Android Studio captures
+captures/
+
+# External native build
+.externalNativeBuild/
+.cxx/
+
+# Keystores
+*.jks
+*.keystore
+
+# OS files
+.DS_Store
+Thumbs.db
