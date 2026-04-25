@@ -23,6 +23,9 @@ captures/
 *.jks
 *.keystore
 
+# Graphify
+graphify-out/
+
 # OS files
 .DS_Store
 Thumbs.db
