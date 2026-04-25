@@ -25,6 +25,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.cinescopesurat.ui.components.BottomNavBar
 import com.example.cinescopesurat.ui.navigation.Route
 import com.example.cinescopesurat.ui.screens.PulseScreen
+import com.example.cinescopesurat.ui.screens.SearchScreen
 import com.example.cinescopesurat.ui.screens.SettingsScreen
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.ThemeViewModel
@@ -82,7 +83,7 @@ fun MainScreen() {
             composable<Route.Vault> { PlaceholderScreen("Vault") }
             composable<Route.SocialHub> { PlaceholderScreen("Social Hub") }
             composable<Route.Identity> { PlaceholderScreen("Identity") }
-            composable<Route.Search> { PlaceholderScreen("Search") }
+            composable<Route.Search> { SearchScreen(liquidState = liquidState) }
             composable<Route.Settings> { SettingsScreen() }
         }
         
