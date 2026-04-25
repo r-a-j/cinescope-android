@@ -10,9 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -20,8 +18,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -44,6 +43,7 @@ fun BottomNavBar(
     }
 
     val customColors = CinescopeTheme.customColors
+    var barSize by remember { mutableStateOf(IntSize.Zero) }
 
     Box(
         modifier = Modifier
@@ -51,145 +51,167 @@ fun BottomNavBar(
             .padding(horizontal = 24.dp, vertical = 24.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-        BoxWithConstraints(
+        // GLASS BACKGROUND LAYER
+        Box(
+            modifier = Modifier
+                .height(64.dp)
+                .fillMaxWidth()
+                .onSizeChanged { barSize = it }
+                .clip(CircleShape)
+                .liquid(liquidState) {
+                    frost = 3.dp
+                    refraction = 0.25f
+                    curve = 0.25f
+                    edge = 0.0f
+                    saturation = 1.4f
+                    dispersion = 0.08f
+                    tint = customColors.glassBackground.copy(alpha = 0.05f)
+                }
+        )
+
+        // INTERACTION & ICON LAYER
+        Box(
             modifier = Modifier
                 .height(64.dp)
                 .fillMaxWidth()
         ) {
-            val itemWidth = maxWidth / bottomNavItems.size
-            val density = LocalDensity.current
-            
-            // Glass Background Layer (Clipped)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(CircleShape)
-                    .liquid(liquidState) {
-                        frost = 3.dp
-                        refraction = 0.25f
-                        curve = 0.25f
-                        saturation = 1.4f
-                        contrast = 1.2f
-                        dispersion = 0.08f
-                        tint = customColors.glassBackground.copy(alpha = 0.05f)
-                    }
-            )
-
-            // DRAMATIC "SOUL" MOTION: Leading and Trailing edges move at different speeds
-            val leftTarget = if (selectedIndex != -1) itemWidth * selectedIndex else 0.dp
-            val rightTarget = if (selectedIndex != -1) itemWidth * (selectedIndex + 1) else itemWidth
-
-            val leftEdge by animateDpAsState(
-                targetValue = leftTarget,
-                animationSpec = spring(stiffness = 150f, dampingRatio = 0.8f),
-                label = "leftEdge"
-            )
-            val rightEdge by animateDpAsState(
-                targetValue = rightTarget,
-                animationSpec = spring(stiffness = 250f, dampingRatio = 0.7f),
-                label = "rightEdge"
-            )
-
-            val activeColor = if (selectedIndex != -1) bottomNavItems[selectedIndex].glowColor else Color.White
-
-            // The "Soul" - Liquid Elastic Indicator (Stays inside the bar)
-            Box(
-                modifier = Modifier
-                    .offset { IntOffset(with(density) { leftEdge.toPx() }.toInt(), 0) }
-                    .width(rightEdge - leftEdge)
-                    .fillMaxHeight()
-                    .padding(vertical = 8.dp, horizontal = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                // Main Glow "Engine"
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    activeColor.copy(alpha = 0.45f),
-                                    activeColor.copy(alpha = 0.1f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                        .blur(16.dp)
+            if (barSize.width > 0) {
+                val itemWidthPx = barSize.width.toFloat() / bottomNavItems.size
+                
+                // Optimized Soul Indicator
+                LiquidSoulIndicator(
+                    selectedIndex = selectedIndex,
+                    itemWidthPx = itemWidthPx,
+                    activeColor = if (selectedIndex != -1) bottomNavItems[selectedIndex].glowColor else Color.White
                 )
-            }
 
-            Row(modifier = Modifier.fillMaxSize()) {
-                bottomNavItems.forEachIndexed { index, item ->
-                    val isSelected = selectedIndex == index
-                    
-                    val scale by animateFloatAsState(
-                        targetValue = if (isSelected) 2.0f else 1f,
-                        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow)
-                    )
-                    
-                    val translationY by animateDpAsState(
-                        targetValue = if (isSelected) (-24).dp else 0.dp,
-                        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow)
-                    )
-                    
-                    val iconColor by animateColorAsState(
-                        targetValue = if (isSelected) item.glowColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                    )
+                Row(modifier = Modifier.fillMaxSize()) {
+                    bottomNavItems.forEachIndexed { index, item ->
+                        val isSelected = selectedIndex == index
+                        
+                        // GPU-Accelerated Animations
+                        val scale by animateFloatAsState(
+                            targetValue = if (isSelected) 2.0f else 1f,
+                            animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+                            label = "scale"
+                        )
+                        
+                        val translationY by animateDpAsState(
+                            targetValue = if (isSelected) (-24).dp else 0.dp,
+                            animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+                            label = "transY"
+                        )
+                        
+                        val iconColor by animateColorAsState(
+                            targetValue = if (isSelected) item.glowColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            label = "color"
+                        )
 
-                    val haloAlpha by animateFloatAsState(
-                        targetValue = if (isSelected) 1f else 0f,
-                        animationSpec = tween(400)
-                    )
+                        val haloAlpha by animateFloatAsState(
+                            targetValue = if (isSelected) 1f else 0f,
+                            animationSpec = tween(400),
+                            label = "halo"
+                        )
 
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                if (!isSelected) {
-                                    navController.navigate(item.route) {
-                                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    if (!isSelected) {
+                                        navController.navigate(item.route) {
+                                            popUpTo(navController.graph.startDestinationId) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
-                                }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Standing Out: Elegant Glow Halo
-                        if (isSelected) {
-                            Box(
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .graphicsLayer { this.translationY = translationY.toPx() }
-                                    .background(
-                                        Brush.radialGradient(
-                                            listOf(item.glowColor.copy(alpha = 0.35f * haloAlpha), Color.Transparent)
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .graphicsLayer { this.translationY = translationY.toPx() }
+                                        .background(
+                                            Brush.radialGradient(
+                                                listOf(item.glowColor.copy(alpha = 0.35f * haloAlpha), Color.Transparent)
+                                            )
                                         )
-                                    )
-                                    .blur(10.dp)
+                                        .blur(10.dp)
+                                )
+                            }
+
+                            Icon(
+                                imageVector = item.icon,
+                                contentDescription = item.title,
+                                tint = iconColor,
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .graphicsLayer {
+                                        scaleX = scale
+                                        scaleY = scale
+                                        this.translationY = translationY.toPx()
+                                    }
                             )
                         }
-
-                        Icon(
-                            imageVector = item.icon,
-                            contentDescription = item.title,
-                            tint = iconColor,
-                            modifier = Modifier
-                                .size(26.dp)
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                    this.translationY = translationY.toPx()
-                                }
-                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LiquidSoulIndicator(
+    selectedIndex: Int,
+    itemWidthPx: Float,
+    activeColor: Color
+) {
+    val density = LocalDensity.current
+    
+    // SOUL MOTION: Elastic stretching on tabs switch
+    val leftTarget = if (selectedIndex != -1) itemWidthPx * selectedIndex else 0f
+    val rightTarget = if (selectedIndex != -1) itemWidthPx * (selectedIndex + 1) else itemWidthPx
+
+    val leftEdge by animateFloatAsState(
+        targetValue = leftTarget,
+        animationSpec = spring(stiffness = 150f, dampingRatio = 0.8f),
+        label = "left"
+    )
+    val rightEdge by animateFloatAsState(
+        targetValue = rightTarget,
+        animationSpec = spring(stiffness = 250f, dampingRatio = 0.7f),
+        label = "right"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxHeight()
+            .graphicsLayer {
+                translationX = leftEdge
+            }
+            .width(with(density) { (rightEdge - leftEdge).toDp() })
+            .padding(vertical = 8.dp, horizontal = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(24.dp))
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            activeColor.copy(alpha = 0.45f),
+                            activeColor.copy(alpha = 0.1f),
+                            Color.Transparent
+                        )
+                    )
+                )
+                .blur(16.dp)
+        )
     }
 }
