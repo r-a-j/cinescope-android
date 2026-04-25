@@ -6,12 +6,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -32,8 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.cinescopesurat.data.model.MediaItem
-import com.example.cinescopesurat.data.model.Person
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.SearchResult
 import com.example.cinescopesurat.ui.viewmodel.SearchViewModel
@@ -44,23 +43,18 @@ import io.github.fletchmckee.liquid.liquefiable
 
 @Composable
 fun SearchScreen(
-    viewModel: SearchViewModel = hiltViewModel(),
-    liquidState: LiquidState = rememberLiquidState() // This is for the bottom nav consistency if needed, but we'll use a local one for search-to-grid refraction
+    liquidState: LiquidState = rememberLiquidState(),
+    viewModel: SearchViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    
-    // We use a dedicated LiquidState for the search bar to refract the grid below it
-    val searchLiquidState = rememberLiquidState()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        // AI Background Glow when enabled
         AiPulseBackground(enabled = uiState.isAiSearchEnabled)
 
         Box(modifier = Modifier.fillMaxSize()) {
-            // RESULTS GRID (Marked as liquefiable so the search bar can refract it)
             if (uiState.isLoading) {
                 SearchLoadingState()
             } else {
@@ -68,25 +62,33 @@ fun SearchScreen(
                     columns = GridCells.Fixed(4),
                     modifier = Modifier
                         .fillMaxSize()
-                        .liquefiable(searchLiquidState),
+                        .liquefiable(liquidState),
                     contentPadding = PaddingValues(
-                        top = 112.dp, // Adjusted to make room for floating search bar
-                        start = 16.dp,
-                        end = 16.dp,
+                        top = 120.dp,
+                        start = 12.dp,
+                        end = 12.dp,
                         bottom = 120.dp
                     ),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // AI SUGGESTION TRIGGER
                     if (uiState.showAiTrigger && !uiState.isAiSearchEnabled) {
                         item(span = { GridItemSpan(4) }) {
                             AiSearchTriggerCard(onTrigger = { viewModel.triggerAiSearch() })
                         }
                     }
 
-                    items(uiState.results) { result ->
-                        SleekGridResultCard(result)
+                    itemsIndexed(
+                        items = uiState.results,
+                        key = { _, result -> 
+                            when(result) {
+                                is SearchResult.Movie -> "m_${result.item.id}"
+                                is SearchResult.TvShow -> "t_${result.item.id}"
+                                is SearchResult.PersonResult -> "p_${result.person.id}"
+                            }
+                        }
+                    ) { index, result ->
+                        SleekGridResultCard(result, index)
                     }
 
                     if (uiState.query.isNotEmpty() && uiState.results.isEmpty()) {
@@ -97,7 +99,6 @@ fun SearchScreen(
                 }
             }
 
-            // FLOATING SEARCH BAR (Layered on top)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -108,7 +109,7 @@ fun SearchScreen(
                     query = uiState.query,
                     onQueryChanged = { viewModel.onQueryChanged(it) },
                     isAiMode = uiState.isAiSearchEnabled,
-                    liquidState = searchLiquidState
+                    liquidState = liquidState
                 )
             }
         }
@@ -166,7 +167,6 @@ fun GlassSearchBar(
             .fillMaxWidth(),
         contentAlignment = Alignment.CenterStart
     ) {
-        // LIQUID GLASS LAYER (Exact Copy from BottomNavBar parameters)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -178,7 +178,7 @@ fun GlassSearchBar(
                     edge = 0.0f
                     saturation = 1.4f
                     dispersion = 0.08f
-                    tint = if (isAiMode) activeColor.copy(alpha = 0.15f) else customColors.glassBackground.copy(alpha = 0.05f)
+                    tint = if (isAiMode) activeColor.copy(alpha = 0.05f) else customColors.glassBackground.copy(alpha = 0.05f)
                 }
                 .border(
                     width = if (isAiMode) 1.dp else 0.dp,
@@ -208,7 +208,7 @@ fun GlassSearchBar(
                         style = MaterialTheme.typography.bodyLarge
                     ) 
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.weight(1f),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
@@ -221,6 +221,24 @@ fun GlassSearchBar(
                 ),
                 singleLine = true
             )
+            
+            AnimatedVisibility(
+                visible = query.isNotEmpty(),
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut()
+            ) {
+                IconButton(
+                    onClick = { onQueryChanged("") },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Clear",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
         }
     }
 }
@@ -274,28 +292,85 @@ fun AiSearchTriggerCard(onTrigger: () -> Unit) {
 }
 
 @Composable
-fun SleekGridResultCard(result: SearchResult) {
-    val (icon, color, imageRes) = when (result) {
-        is SearchResult.Movie -> Triple(Icons.Default.Movie, Color(0xFFF85149), result.item.posterRes)
-        is SearchResult.TvShow -> Triple(Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterRes)
-        is SearchResult.PersonResult -> Triple(Icons.Default.Person, Color(0xFFD2A8FF), result.person.imageRes)
+fun SleekGridResultCard(result: SearchResult, index: Int) {
+    val (title, icon, color, imageRes) = when (result) {
+        is SearchResult.Movie -> Quadruple(result.item.title, Icons.Default.Movie, Color(0xFFF85149), result.item.posterRes)
+        is SearchResult.TvShow -> Quadruple(result.item.title, Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterRes)
+        is SearchResult.PersonResult -> Quadruple(result.person.name, Icons.Default.Person, Color(0xFFD2A8FF), result.person.imageRes)
     }
+
+    // 1. CASCADING ANIMATION
+    var isVisible by remember { mutableStateOf(false) }
+    
+    // We use animateFloatAsState but with a specific spec to ensure it starts from 0
+    val entryAlpha by animateFloatAsState(
+        targetValue = if (isVisible) 1f else 0f,
+        animationSpec = tween(durationMillis = 600, delayMillis = (index % 8) * 40),
+        label = "entryAlpha"
+    )
+    val entrySlide by animateDpAsState(
+        targetValue = if (isVisible) 0.dp else 30.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "entrySlide"
+    )
+
+    LaunchedEffect(Unit) {
+        isVisible = true
+    }
+
+    // 2. INTERACTIVE FEEDBACK
+    var isPressed by remember { mutableStateOf(false) }
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioHighBouncy, stiffness = Spring.StiffnessMedium),
+        label = "pressScale"
+    )
 
     Box(
         modifier = Modifier
-            .aspectRatio(0.7f) // Cinematic poster ratio
+            .aspectRatio(0.7f)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+                translationY = entrySlide.toPx()
+                alpha = entryAlpha
+            }
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f))
-            .clickable { }
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { /* Navigate */ }
+                )
+            }
     ) {
         Image(
             painter = painterResource(imageRes),
-            contentDescription = null,
+            contentDescription = title,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
 
-        // Type Indicator (Sleek corner blur)
+        if (imageRes == com.example.cinescopesurat.R.drawable.placeholder) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)).padding(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 3,
+                    modifier = Modifier.graphicsLayer { this.alpha = 1f }
+                )
+            }
+        }
+
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -303,11 +378,8 @@ fun SleekGridResultCard(result: SearchResult) {
                 .size(24.dp)
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.3f))
-                .blur(4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            // Just for the blur effect behind the icon
-        }
+                .blur(4.dp)
+        )
         
         Icon(
             imageVector = icon,
@@ -374,3 +446,5 @@ fun SearchEmptyState(query: String, onAiTrigger: () -> Unit) {
         }
     }
 }
+
+private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
