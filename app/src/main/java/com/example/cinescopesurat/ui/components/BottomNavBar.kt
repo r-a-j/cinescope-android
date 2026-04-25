@@ -51,24 +51,6 @@ fun BottomNavBar(
             .padding(horizontal = 24.dp, vertical = 24.dp),
         contentAlignment = Alignment.BottomCenter
     ) {
-        // Glass Background Layer (Clipped)
-        Box(
-            modifier = Modifier
-                .height(64.dp)
-                .fillMaxWidth()
-                .clip(CircleShape)
-                .liquid(liquidState) {
-                    frost = 3.dp
-                    refraction = 0.25f
-                    curve = 0.25f
-                    edge = 0.0f
-                    saturation = 1.3f
-                    dispersion = 0.08f  // Pro-lens chromatic aberration
-                    tint = customColors.glassBackground
-                }
-        )
-
-        // Interaction & Icon Layer (NOT CLIPPED to allow 3D peek out)
         BoxWithConstraints(
             modifier = Modifier
                 .height(64.dp)
@@ -77,6 +59,22 @@ fun BottomNavBar(
             val itemWidth = maxWidth / bottomNavItems.size
             val density = LocalDensity.current
             
+            // Glass Background Layer (Clipped)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
+                    .liquid(liquidState) {
+                        frost = 3.dp
+                        refraction = 0.25f
+                        curve = 0.25f
+                        saturation = 1.4f
+                        contrast = 1.2f
+                        dispersion = 0.08f
+                        tint = customColors.glassBackground.copy(alpha = 0.05f)
+                    }
+            )
+
             // DRAMATIC "SOUL" MOTION: Leading and Trailing edges move at different speeds
             val leftTarget = if (selectedIndex != -1) itemWidth * selectedIndex else 0.dp
             val rightTarget = if (selectedIndex != -1) itemWidth * (selectedIndex + 1) else itemWidth
