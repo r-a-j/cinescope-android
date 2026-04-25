@@ -77,10 +77,15 @@ fun CinescopeTheme(
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             val dynamicScheme = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            // Override primary with brand color to maintain identity
             dynamicScheme.copy(
                 primary = CinematicCrimson,
-                primaryContainer = if (darkTheme) DarkPrimaryContainer else LightPrimaryContainer
+                onPrimary = Color.White,
+                primaryContainer = if (darkTheme) DarkPrimaryContainer else LightPrimaryContainer,
+                onPrimaryContainer = if (darkTheme) DarkOnPrimaryContainer else LightOnPrimaryContainer,
+                secondary = BoldOrange,
+                onSecondary = if (darkTheme) Color.Black else Color.White,
+                tertiary = DeepRichRed,
+                onTertiary = Color.White
             )
         }
         darkTheme -> DarkColorScheme

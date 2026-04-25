@@ -37,13 +37,16 @@ fun BottomNavBar(
 ) {
     val navBackStackEntry = navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry.value?.destination
-    
+
     val selectedIndex = bottomNavItems.indexOfFirst { item ->
         currentDestination?.hasRoute(item.route::class) ?: false
     }
 
     val customColors = CinescopeTheme.customColors
     var barSize by remember { mutableStateOf(IntSize.Zero) }
+
+    // Use theme's primary color for all active states
+    val activeBrandColor = MaterialTheme.colorScheme.primary
 
     Box(
         modifier = Modifier
@@ -77,33 +80,35 @@ fun BottomNavBar(
         ) {
             if (barSize.width > 0) {
                 val itemWidthPx = barSize.width.toFloat() / bottomNavItems.size
-                
+
+                val currentActiveColor = if (selectedIndex != -1) activeBrandColor else Color.White
+
                 // Optimized Soul Indicator
                 LiquidSoulIndicator(
                     selectedIndex = selectedIndex,
                     itemWidthPx = itemWidthPx,
-                    activeColor = if (selectedIndex != -1) bottomNavItems[selectedIndex].glowColor else Color.White
+                    activeColor = currentActiveColor
                 )
 
                 Row(modifier = Modifier.fillMaxSize()) {
                     bottomNavItems.forEachIndexed { index, item ->
                         val isSelected = selectedIndex == index
-                        
-                        // GPU-Accelerated Animations
+
+                        // Optimized GPU-Accelerated Animations
                         val scale by animateFloatAsState(
                             targetValue = if (isSelected) 2.0f else 1f,
                             animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
                             label = "scale"
                         )
-                        
+
                         val translationY by animateDpAsState(
                             targetValue = if (isSelected) (-24).dp else 0.dp,
                             animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
                             label = "transY"
                         )
-                        
+
                         val iconColor by animateColorAsState(
-                            targetValue = if (isSelected) item.glowColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            targetValue = if (isSelected) activeBrandColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                             label = "color"
                         )
 
@@ -138,7 +143,7 @@ fun BottomNavBar(
                                         .graphicsLayer { this.translationY = translationY.toPx() }
                                         .background(
                                             Brush.radialGradient(
-                                                listOf(item.glowColor.copy(alpha = 0.35f * haloAlpha), Color.Transparent)
+                                                listOf(activeBrandColor.copy(alpha = 0.35f * haloAlpha), Color.Transparent)
                                             )
                                         )
                                         .blur(10.dp)
@@ -172,7 +177,7 @@ private fun LiquidSoulIndicator(
     activeColor: Color
 ) {
     val density = LocalDensity.current
-    
+
     // SOUL MOTION: Elastic stretching on tabs switch
     val leftTarget = if (selectedIndex != -1) itemWidthPx * selectedIndex else 0f
     val rightTarget = if (selectedIndex != -1) itemWidthPx * (selectedIndex + 1) else itemWidthPx
