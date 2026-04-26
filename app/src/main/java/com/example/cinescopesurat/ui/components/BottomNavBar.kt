@@ -45,8 +45,12 @@ fun BottomNavBar(
     val customColors = CinescopeTheme.customColors
     var barSize by remember { mutableStateOf(IntSize.Zero) }
 
-    // Use theme's primary color for all active states
-    val activeBrandColor = MaterialTheme.colorScheme.primary
+    // Use the item's specific glow color if selected, otherwise fallback to primary
+    val activeBrandColor = if (selectedIndex != -1) {
+        bottomNavItems[selectedIndex].glowColor
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
 
     Box(
         modifier = Modifier
@@ -68,7 +72,11 @@ fun BottomNavBar(
                     edge = 0.0f
                     saturation = 1.4f
                     dispersion = 0.08f
-                    tint = customColors.glassBackground.copy(alpha = 0.05f)
+                    tint = if (selectedIndex != -1) {
+                        activeBrandColor.copy(alpha = 0.15f)
+                    } else {
+                        customColors.glassBackground.copy(alpha = 0.05f)
+                    }
                 }
         )
 

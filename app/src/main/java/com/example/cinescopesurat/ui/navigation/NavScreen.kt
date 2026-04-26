@@ -6,6 +6,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.serialization.Serializable
 
+import com.example.cinescopesurat.ui.theme.ActionRed
+import com.example.cinescopesurat.ui.theme.OracleBlue
+import com.example.cinescopesurat.ui.theme.SoulPurple
+import com.example.cinescopesurat.ui.theme.CinematicCrimson
+import com.example.cinescopesurat.ui.theme.DiscoveryCyan
+import com.example.cinescopesurat.ui.theme.SettingsSlate
+import com.example.cinescopesurat.ui.theme.IdentityOrange
+
 @Serializable
 sealed interface Route {
     @Serializable object Pulse : Route
@@ -28,11 +36,11 @@ data class BottomNavItem(
 )
 
 val bottomNavItems = listOf(
-    BottomNavItem(Route.Pulse, "Pulse", Icons.Default.Bolt, Color(0xFFF85149)),
-    BottomNavItem(Route.Oracle, "Oracle", Icons.Default.AutoAwesome, Color(0xFF79C0FF)),
-    BottomNavItem(Route.Vault, "Vault", Icons.Default.VideoLibrary, Color(0xFFE50914)),
-    BottomNavItem(Route.SocialHub, "Social Hub", Icons.Default.Group, Color(0xFFD2A8FF)),
-    BottomNavItem(Route.Identity, "Identity", Icons.Default.Person, Color(0xFFF0883E)),
-    BottomNavItem(Route.Search, "Search", Icons.Default.Search, Color.White),
-    BottomNavItem(Route.Settings, "Settings", Icons.Default.Settings, Color.White)
+    BottomNavItem(Route.Pulse, "Pulse", Icons.Default.Bolt, ActionRed),
+    BottomNavItem(Route.Oracle, "Oracle", Icons.Default.AutoAwesome, OracleBlue),
+    BottomNavItem(Route.Vault, "Vault", Icons.Default.VideoLibrary, CinematicCrimson),
+    BottomNavItem(Route.SocialHub, "Social Hub", Icons.Default.Group, SoulPurple),
+    BottomNavItem(Route.Identity, "Identity", Icons.Default.Person, IdentityOrange),
+    BottomNavItem(Route.Search, "Search", Icons.Default.Search, DiscoveryCyan),
+    BottomNavItem(Route.Settings, "Settings", Icons.Default.Settings, SettingsSlate)
 )
