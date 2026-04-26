@@ -8,6 +8,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -25,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -46,107 +49,222 @@ import io.github.fletchmckee.liquid.liquefiable
 
 @Composable
 fun SearchScreen(
-    liquidState: LiquidState = rememberLiquidState(),
     viewModel: SearchViewModel = hiltViewModel(),
     onMovieClick: (Int) -> Unit = {},
     onTvShowClick: (Int) -> Unit = {},
     onPersonClick: (Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var isSearchBarFocused by remember { mutableStateOf(false) }
+    
+    // Dedicated liquid state for the search bar to avoid recursive sampling from NavHost
+    val barLiquidState = rememberLiquidState()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        AiPulseBackground(enabled = uiState.isAiSearchEnabled)
-
         Box(modifier = Modifier.fillMaxSize()) {
-            if (uiState.isLoading && uiState.isAiSearchEnabled) {
-                OracleLoadingState(uiState.oracleThoughts)
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(4),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .liquefiable(liquidState),
-                    contentPadding = PaddingValues(
-                        top = 60.dp,
-                        start = 12.dp,
-                        end = 12.dp,
-                        bottom = 200.dp
-                    ),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // ZERO STATE: Suggestions
-                    if (uiState.query.isEmpty() && isSearchBarFocused) {
-                        item(span = { GridItemSpan(4) }) {
-                            Text(
-                                "POPULAR NOW",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 2.sp,
-                                modifier = Modifier.padding(vertical = 16.dp),
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        itemsIndexed(
-                            items = uiState.suggestions,
-                            span = { index, _ -> GridItemSpan(if (index == 0) 4 else 2) }
-                        ) { index, result ->
-                            SleekGridResultCard(
-                                result = result,
-                                index = index,
-                                onMovieClick = onMovieClick,
-                                onTvShowClick = onTvShowClick,
-                                onPersonClick = onPersonClick
-                            )
-                        }
-                    }
+            // SOURCE: Everything behind the search bar
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .liquefiable(barLiquidState)
+            ) {
+                AiPulseBackground(enabled = uiState.isAiSearchEnabled)
 
-                    if (uiState.showAiTrigger && !uiState.isAiSearchEnabled && uiState.query.isNotEmpty()) {
-                        item(span = { GridItemSpan(4) }) {
-                            AiSearchTriggerCard(onTrigger = { viewModel.triggerAiSearch() })
-                        }
-                    }
+                if (uiState.isLoading && uiState.isAiSearchEnabled) {
+                    OracleLoadingState(uiState.oracleThoughts)
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(4),
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            top = 32.dp,
+                            start = 16.dp,
+                            end = 16.dp,
+                            bottom = 240.dp
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // ZERO STATE: DISCOVERY DASHBOARD
+                        if (uiState.query.isEmpty()) {
+                            // Section: Feature Title
+                            item(span = { GridItemSpan(4) }) {
+                                Column(modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)) {
+                                    Text(
+                                        "CINESCOPE RECOMMENDED",
+                                        style = MaterialTheme.typography.displayMedium,
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = (-1).sp,
+                                        color = MaterialTheme.colorScheme.onBackground
+                                    )
+                                    
+                                    val messages = remember {
+                                        listOf(
+                                            "Curated stories and rising talent, handpicked for your cinematic journey.",
+                                            "Discover hidden gems and global hits, tailored to your unique taste.",
+                                            "Your next favorite story is just a scroll away. Explore the archives.",
+                                            "Dive into a multiverse of cinema, from indie favorites to epic sagas.",
+                                            "The Oracle has synthesized these recommendations specifically for you.",
+                                            "Sleek interface, cinematic soul. Welcome to the future of discovery.",
+                                            "Finding the perfect watch is an art. Let the Oracle be your guide.",
+                                            "From the golden age to tomorrow's classics, it's all here.",
+                                            "Wait, have you seen the latest trending talent? Scroll down.",
+                                            "Unlocking a world of narrative excellence. One frame at a time."
+                                        )
+                                    }
+                                    
+                                    var messageIndex by remember { mutableIntStateOf(0) }
+                                    
+                                    LaunchedEffect(Unit) {
+                                        while (true) {
+                                            kotlinx.coroutines.delay(10000)
+                                            messageIndex = (messageIndex + 1) % messages.size
+                                        }
+                                    }
 
-                    itemsIndexed(
-                        items = uiState.results,
-                        key = { _, result -> 
-                            when(result) {
-                                is SearchResult.Movie -> "m_${result.item.id}"
-                                is SearchResult.TvShow -> "t_${result.item.id}"
-                                is SearchResult.PersonResult -> "p_${result.person.id}"
+                                    AnimatedContent(
+                                        targetState = messages[messageIndex],
+                                        transitionSpec = {
+                                            fadeIn(animationSpec = tween(1500, easing = EaseInOutQuart)) + 
+                                            slideInHorizontally(animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)) { it / 20 } +
+                                            scaleIn(initialScale = 0.96f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) togetherWith
+                                            fadeOut(animationSpec = tween(1000, easing = EaseInOutQuart)) + 
+                                            scaleOut(targetScale = 1.04f)
+                                        },
+                                        label = "rotatingSubtext"
+                                    ) { text ->
+                                        Text(
+                                            text = text,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                            modifier = Modifier
+                                                .padding(top = 4.dp, end = 48.dp)
+                                                .graphicsLayer { alpha = 1f } // GPU acceleration
+                                        )
+                                    }
+                                }
                             }
-                        },
-                        span = { index, _ -> 
-                            // BENTO SPAN LOGIC
-                            val span = when {
-                                index % 7 == 0 -> 4
-                                index % 7 == 1 || index % 7 == 2 -> 2
-                                else -> 1
-                            }
-                            GridItemSpan(span)
-                        }
-                    ) { index, result ->
-                        SleekGridResultCard(
-                            result = result,
-                            index = index,
-                            onMovieClick = onMovieClick,
-                            onTvShowClick = onTvShowClick,
-                            onPersonClick = onPersonClick
-                        )
-                    }
 
-                    if (uiState.query.isNotEmpty() && uiState.results.isEmpty() && !uiState.isLoading) {
-                        item(span = { GridItemSpan(4) }) {
-                            SearchEmptyState(query = uiState.query) { viewModel.triggerAiSearch() }
+                            // Section: Categories (Horizontal Row)
+                            item(span = { GridItemSpan(4) }) {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(vertical = 8.dp)
+                                ) {
+                                    items(uiState.categories) { (name, color) ->
+                                        SuggestionChip(
+                                            onClick = { viewModel.onQueryChanged(name) },
+                                            label = { Text(name, fontWeight = FontWeight.Bold) },
+                                            colors = SuggestionChipDefaults.suggestionChipColors(
+                                                containerColor = color.copy(alpha = 0.1f),
+                                                labelColor = color
+                                            ),
+                                            border = SuggestionChipDefaults.suggestionChipBorder(
+                                                enabled = true,
+                                                borderColor = color.copy(alpha = 0.3f)
+                                            ),
+                                            shape = RoundedCornerShape(12.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Section: Main Discovery Grid
+                            itemsIndexed(
+                                items = uiState.trendingMovies,
+                                span = { index, _ ->
+                                    val span = when (index) {
+                                        0, 1 -> 2 // Two medium cards at the top
+                                        else -> 1 // Rest are small
+                                    }
+                                    GridItemSpan(span)
+                                }
+                            ) { index, result ->
+                                SleekGridResultCard(
+                                    result = result,
+                                    index = index,
+                                    onMovieClick = onMovieClick,
+                                    onTvShowClick = onTvShowClick,
+                                    onPersonClick = onPersonClick
+                                )
+                            }
+
+                            // Section: Trending Talent
+                            item(span = { GridItemSpan(4) }) {
+                                Text(
+                                    "TRENDING TALENT",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    letterSpacing = 2.sp,
+                                    modifier = Modifier.padding(top = 24.dp, bottom = 12.dp)
+                                )
+                            }
+
+                            item(span = { GridItemSpan(4) }) {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    items(uiState.trendingPeople) { personResult ->
+                                        TalentCircleItem(
+                                            person = personResult.person,
+                                            onClick = { onPersonClick(personResult.person.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        if (uiState.showAiTrigger && !uiState.isAiSearchEnabled && uiState.query.isNotEmpty() && uiState.results.isNotEmpty()) {
+                            item(span = { GridItemSpan(4) }) {
+                                Box(modifier = Modifier.padding(top = 16.dp)) {
+                                    AiSearchTriggerCard(onTrigger = { viewModel.triggerAiSearch() })
+                                }
+                            }
+                        }
+
+                        if (uiState.query.isNotEmpty()) {
+                            itemsIndexed(
+                                items = uiState.results,
+                                key = { _, result -> 
+                                    when(result) {
+                                        is SearchResult.Movie -> "m_${result.item.id}"
+                                        is SearchResult.TvShow -> "t_${result.item.id}"
+                                        is SearchResult.PersonResult -> "p_${result.person.id}"
+                                    }
+                                },
+                                span = { index, _ -> 
+                                    // BENTO SPAN LOGIC
+                                    val span = when {
+                                        index % 7 == 0 -> 4
+                                        index % 7 == 1 || index % 7 == 2 -> 2
+                                        else -> 1
+                                    }
+                                    GridItemSpan(span)
+                                }
+                            ) { index, result ->
+                                SleekGridResultCard(
+                                    result = result,
+                                    index = index,
+                                    onMovieClick = onMovieClick,
+                                    onTvShowClick = onTvShowClick,
+                                    onPersonClick = onPersonClick
+                                )
+                            }
+                        }
+
+                        if (uiState.query.isNotEmpty() && uiState.results.isEmpty() && !uiState.isLoading) {
+                            item(span = { GridItemSpan(4) }) {
+                                SearchEmptyState(query = uiState.query) { viewModel.triggerAiSearch() }
+                            }
                         }
                     }
                 }
             }
 
+            // CONSUMER: The Search Bar
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -158,8 +276,7 @@ fun SearchScreen(
                     query = uiState.query,
                     onQueryChanged = { viewModel.onQueryChanged(it) },
                     isAiMode = uiState.isAiSearchEnabled,
-                    liquidState = liquidState,
-                    onFocusChanged = { isSearchBarFocused = it }
+                    liquidState = barLiquidState
                 )
             }
         }
@@ -248,18 +365,19 @@ fun GlassSearchBar(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(CircleShape)
-                .background(containerColor)
                 .liquid(liquidState) {
-                    frost = 4.dp
-                    refraction = 0.2f
-                    curve = 0.15f
-                    tint = Color.Transparent
+                    frost = 3.dp
+                    refraction = 0.25f
+                    curve = 0.25f
+                    edge = 0.0f
+                    saturation = 1.4f
+                    dispersion = 0.08f
+                    tint = if (isAiMode) {
+                        activeColor.copy(alpha = 0.15f)
+                    } else {
+                        customColors.glassBackground.copy(alpha = 0.05f)
+                    }
                 }
-                .border(
-                    width = 1.dp,
-                    color = borderColor.copy(alpha = 0.3f),
-                    shape = CircleShape
-                )
         )
 
         Row(
@@ -326,6 +444,8 @@ fun AiSearchTriggerCard(onTrigger: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(top = 24.dp) // Extra padding to avoid status bar
             .clip(RoundedCornerShape(28.dp))
             .background(
                 Brush.linearGradient(
@@ -370,6 +490,38 @@ fun AiSearchTriggerCard(onTrigger: () -> Unit) {
 }
 
 @Composable
+fun TalentCircleItem(person: com.example.cinescopesurat.data.model.Person, onClick: () -> Unit) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .width(80.dp)
+            .clickable { onClick() }
+    ) {
+        Box(
+            modifier = Modifier
+                .size(72.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            Image(
+                painter = painterResource(person.imageRes),
+                contentDescription = person.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = person.name.split(" ").first(),
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
 fun SleekGridResultCard(
     result: SearchResult,
     index: Int,
@@ -410,6 +562,9 @@ fun SleekGridResultCard(
         label = "pressScale"
     )
 
+    val isPlaceholder = imageRes == com.example.cinescopesurat.R.drawable.placeholder || 
+                        imageRes == com.example.cinescopesurat.R.drawable.placeholder_backdrop
+
     Box(
         modifier = Modifier
             .aspectRatio(0.7f)
@@ -438,40 +593,49 @@ fun SleekGridResultCard(
                 )
             }
     ) {
-        Image(
-            painter = painterResource(imageRes),
-            contentDescription = title,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+        if (!isPlaceholder) {
+            Image(
+                painter = painterResource(imageRes),
+                contentDescription = title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
 
+        // Overlay for information
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                .background(
+                    if (isPlaceholder) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                    else Color.Transparent
+                ),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = color.copy(alpha = 0.4f),
-                    modifier = Modifier.size(if (imageRes == com.example.cinescopesurat.R.drawable.placeholder) 48.dp else 24.dp)
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = title.uppercase(),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 12.dp),
-                    maxLines = 2
-                )
+            if (isPlaceholder) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = color.copy(alpha = 0.6f),
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = title.uppercase(),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        maxLines = 2
+                    )
+                }
             }
         }
 
+        // Type Icon (Top Right)
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -479,7 +643,6 @@ fun SleekGridResultCard(
                 .size(24.dp)
                 .clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.3f))
-                .blur(4.dp)
         )
         
         Icon(
@@ -496,21 +659,52 @@ fun SleekGridResultCard(
 
 @Composable
 fun OracleLoadingState(thought: String) {
+    val infiniteTransition = rememberInfiniteTransition(label = "oracleGlow")
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "glowAlpha"
+    )
+
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(120.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    strokeWidth = 2.dp
+        // BACKGROUND AMBIENT GLOW (More expansive and soft)
+        Box(
+            modifier = Modifier
+                .size(400.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f * glowAlpha),
+                            Color.Transparent
+                        )
+                    )
                 )
+                .blur(80.dp)
+        )
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.offset(y = (-160).dp) // Move significantly up to avoid keyboard/searchbar overlap
+        ) {
+            Box(contentAlignment = Alignment.Center) {
                 Icon(
                     Icons.Default.AutoAwesome,
                     contentDescription = null,
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier
+                        .size(64.dp) // Slightly larger for elegance
+                        .graphicsLayer {
+                            val pulse = 0.9f + (glowAlpha * 0.2f)
+                            scaleX = pulse
+                            scaleY = pulse
+                            rotationZ = glowAlpha * 15f // Subtler rotation
+                        },
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -520,8 +714,8 @@ fun OracleLoadingState(thought: String) {
             AnimatedContent(
                 targetState = thought,
                 transitionSpec = {
-                    fadeIn(tween(500)) + slideInVertically { it } togetherWith
-                    fadeOut(tween(500)) + slideOutVertically { -it }
+                    (fadeIn(tween(1000)) + slideInVertically(tween(1000)) { it / 2 }) togetherWith
+                    (fadeOut(tween(1000)) + slideOutVertically(tween(1000)) { -it / 2 })
                 },
                 label = "thought"
             ) { text ->
@@ -529,8 +723,9 @@ fun OracleLoadingState(thought: String) {
                     text = text.uppercase(),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Black,
-                    letterSpacing = 2.sp,
-                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 6.sp, // Even more "Oracle" like
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center,
                     modifier = Modifier.padding(horizontal = 40.dp)
                 )
             }

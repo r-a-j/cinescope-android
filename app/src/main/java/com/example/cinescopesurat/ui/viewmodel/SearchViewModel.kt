@@ -1,5 +1,6 @@
 package com.example.cinescopesurat.ui.viewmodel
 
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cinescopesurat.data.model.MediaItem
@@ -20,7 +21,9 @@ sealed interface SearchResult {
 data class SearchUiState(
     val query: String = "",
     val results: List<SearchResult> = emptyList(),
-    val suggestions: List<SearchResult> = emptyList(),
+    val trendingMovies: List<SearchResult.Movie> = emptyList(),
+    val trendingPeople: List<SearchResult.PersonResult> = emptyList(),
+    val categories: List<Pair<String, Color>> = emptyList(),
     val oracleThoughts: String = "",
     val isLoading: Boolean = false,
     val isAiSearchEnabled: Boolean = false,
@@ -36,14 +39,28 @@ class SearchViewModel @Inject constructor(
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
     init {
-        loadSuggestions()
+        loadDiscoveryData()
     }
 
-    private fun loadSuggestions() {
+    private fun loadDiscoveryData() {
         viewModelScope.launch {
-            repository.getTrendingMovies().collect { movies ->
-                _uiState.update { it.copy(suggestions = movies.take(5).map { SearchResult.Movie(it) }) }
-            }
+            combine(
+                repository.getTrendingMovies(),
+                repository.searchPeople("")
+            ) { movies, people ->
+                _uiState.update { 
+                    it.copy(
+                        trendingMovies = movies.take(6).map { m -> SearchResult.Movie(m) },
+                        trendingPeople = people.take(8).map { p -> SearchResult.PersonResult(p) },
+                        categories = listOf(
+                            "Sci-Fi" to Color(0xFFD2A8FF),
+                            "Action" to Color(0xFFF85149),
+                            "Drama" to Color(0xFF79C0FF),
+                            "Indie" to Color(0xFFFF9F0A)
+                        )
+                    )
+                }
+            }.collect()
         }
     }
 

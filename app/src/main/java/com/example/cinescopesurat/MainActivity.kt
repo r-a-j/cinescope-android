@@ -100,7 +100,6 @@ fun MainScreen() {
             composable<Route.SocialHub> { PlaceholderScreen("Social Hub") }
             composable<Route.Identity> { PlaceholderScreen("Identity") }
             composable<Route.Search> { SearchScreen(
-                liquidState = liquidState,
                 onMovieClick = { id -> navController.navigate(Route.MovieDetails(id)) },
                 onTvShowClick = { id -> navController.navigate(Route.TvShowDetails(id)) },
                 onPersonClick = { id -> navController.navigate(Route.PersonDetails(id)) }
