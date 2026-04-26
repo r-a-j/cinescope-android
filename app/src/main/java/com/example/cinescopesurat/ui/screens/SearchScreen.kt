@@ -239,18 +239,17 @@ fun SearchScreen(
                                     }
                                 },
                                 span = { index, _ -> 
-                                    // BENTO SPAN LOGIC
-                                    val span = when {
-                                        index % 7 == 0 -> 4
-                                        index % 7 == 1 || index % 7 == 2 -> 2
-                                        else -> 1
+                                    // CINEMATIC STAGGERED RHYTHM
+                                    val span = when (index % 5) {
+                                        0 -> 2 // Anchor
+                                        1 -> 2 // Pair
+                                        else -> 1 // Triplets
                                     }
                                     GridItemSpan(span)
                                 }
-                            ) { index, result ->
-                                SleekGridResultCard(
+                            ) { _, result ->
+                                CinematicCompactCard(
                                     result = result,
-                                    index = index,
                                     onMovieClick = onMovieClick,
                                     onTvShowClick = onTvShowClick,
                                     onPersonClick = onPersonClick
@@ -521,6 +520,227 @@ fun TalentCircleItem(person: com.example.cinescopesurat.data.model.Person, onCli
             maxLines = 1,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+fun CinematicCompactCard(
+    result: SearchResult,
+    onMovieClick: (Int) -> Unit = {},
+    onTvShowClick: (Int) -> Unit = {},
+    onPersonClick: (Int) -> Unit = {}
+) {
+    val (title, icon, color, imageRes) = when (result) {
+        is SearchResult.Movie -> Quadruple(result.item.title, Icons.Default.Movie, Color(0xFFF85149), result.item.posterRes)
+        is SearchResult.TvShow -> Quadruple(result.item.title, Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterRes)
+        is SearchResult.PersonResult -> Quadruple(result.person.name, Icons.Default.Person, Color(0xFFD2A8FF), result.person.imageRes)
+    }
+
+    val isPlaceholder = imageRes == com.example.cinescopesurat.R.drawable.placeholder || 
+                        imageRes == com.example.cinescopesurat.R.drawable.placeholder_backdrop
+
+    var isPressed by remember { mutableStateOf(false) }
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        label = "press"
+    )
+
+    Box(
+        modifier = Modifier
+            .aspectRatio(0.8f) // Slightly wider than standard posters for grid density
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
+            .clip(RoundedCornerShape(12.dp))
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { 
+                        when (result) {
+                            is SearchResult.Movie -> onMovieClick(result.item.id)
+                            is SearchResult.TvShow -> onTvShowClick(result.item.id)
+                            is SearchResult.PersonResult -> onPersonClick(result.person.id)
+                        }
+                    }
+                )
+            }
+    ) {
+        // THE HERO: FULL POSTER
+        if (!isPlaceholder) {
+            Image(
+                painter = painterResource(imageRes),
+                contentDescription = title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = color.copy(alpha = 0.3f), modifier = Modifier.size(32.dp))
+            }
+        }
+
+        // AMBIENT GRADIENT (Bottom-up for text legibility)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.5f to Color.Transparent,
+                        1.0f to Color.Black.copy(alpha = 0.8f)
+                    )
+                )
+        )
+
+        // MINIMAL INFO OVERLAY
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(8.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Black,
+                color = Color.White,
+                maxLines = 2,
+                lineHeight = 12.sp
+            )
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    icon, 
+                    null, 
+                    tint = color, 
+                    modifier = Modifier.size(10.dp)
+                )
+                if (result is SearchResult.Movie || result is SearchResult.TvShow) {
+                    val rating = if (result is SearchResult.Movie) result.item.rating else (result as SearchResult.TvShow).item.rating
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = rating,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.6f),
+                        fontSize = 8.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CompactResultCard(
+    result: SearchResult,
+    onMovieClick: (Int) -> Unit = {},
+    onTvShowClick: (Int) -> Unit = {},
+    onPersonClick: (Int) -> Unit = {}
+) {
+    val (title, icon, color, imageRes) = when (result) {
+        is SearchResult.Movie -> Quadruple(result.item.title, Icons.Default.Movie, Color(0xFFF85149), result.item.posterRes)
+        is SearchResult.TvShow -> Quadruple(result.item.title, Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterRes)
+        is SearchResult.PersonResult -> Quadruple(result.person.name, Icons.Default.Person, Color(0xFFD2A8FF), result.person.imageRes)
+    }
+
+    val isPlaceholder = imageRes == com.example.cinescopesurat.R.drawable.placeholder || 
+                        imageRes == com.example.cinescopesurat.R.drawable.placeholder_backdrop
+
+    Surface(
+        onClick = {
+            when (result) {
+                is SearchResult.Movie -> onMovieClick(result.item.id)
+                is SearchResult.TvShow -> onTvShowClick(result.item.id)
+                is SearchResult.PersonResult -> onPersonClick(result.person.id)
+            }
+        },
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Thumbnail
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                if (!isPlaceholder) {
+                    Image(
+                        painter = painterResource(imageRes),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = color.copy(alpha = 0.4f),
+                        modifier = Modifier
+                            .size(32.dp)
+                            .align(Alignment.Center)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Info
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = when(result) {
+                        is SearchResult.Movie -> "MOVIE"
+                        is SearchResult.TvShow -> "TV SHOW"
+                        is SearchResult.PersonResult -> result.person.role.uppercase()
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = color,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Black,
+                    maxLines = 1,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (result is SearchResult.Movie || result is SearchResult.TvShow) {
+                    val rating = if (result is SearchResult.Movie) result.item.rating else (result as SearchResult.TvShow).item.rating
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            tint = Color(0xFFFFD700),
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = rating,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
