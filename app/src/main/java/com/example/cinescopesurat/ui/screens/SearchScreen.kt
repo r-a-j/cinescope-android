@@ -91,7 +91,7 @@ fun SearchScreen(
                         if (uiState.query.isEmpty()) {
                             // Section: Feature Title
                             item(span = { GridItemSpan(4) }) {
-                                Column(modifier = Modifier.padding(top = 16.dp, bottom = 16.dp)) {
+                                Column(modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)) {
                                     Text(
                                         "CINESCOPE RECOMMENDED",
                                         style = MaterialTheme.typography.displayMedium,
@@ -127,11 +127,11 @@ fun SearchScreen(
                                     AnimatedContent(
                                         targetState = messages[messageIndex],
                                         transitionSpec = {
-                                            fadeIn(animationSpec = tween(1500, easing = EaseInOutQuart)) + 
-                                            slideInHorizontally(animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)) { it / 20 } +
-                                            scaleIn(initialScale = 0.96f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy)) togetherWith
-                                            fadeOut(animationSpec = tween(1000, easing = EaseInOutQuart)) + 
-                                            scaleOut(targetScale = 1.04f)
+                                            fadeIn(tween(1200, easing = LinearOutSlowInEasing)) + 
+                                            slideInVertically(tween(1200, easing = LinearOutSlowInEasing)) { it / 3 } +
+                                            scaleIn(initialScale = 0.95f, animationSpec = tween(1200, easing = LinearOutSlowInEasing)) togetherWith
+                                            fadeOut(tween(600, easing = FastOutLinearInEasing)) +
+                                            scaleOut(targetScale = 1.05f, animationSpec = tween(600, easing = FastOutLinearInEasing))
                                         },
                                         label = "rotatingSubtext"
                                     ) { text ->
@@ -140,8 +140,11 @@ fun SearchScreen(
                                             style = MaterialTheme.typography.bodyLarge,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                             modifier = Modifier
-                                                .padding(top = 4.dp, end = 48.dp)
-                                                .graphicsLayer { alpha = 1f } // GPU acceleration
+                                                .padding(top = 2.dp, end = 48.dp)
+                                                .graphicsLayer { 
+                                                    // Ensure GPU layer for smooth transitions
+                                                    clip = false
+                                                }
                                         )
                                     }
                                 }
@@ -151,7 +154,7 @@ fun SearchScreen(
                             item(span = { GridItemSpan(4) }) {
                                 LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(vertical = 8.dp)
+                                    contentPadding = PaddingValues(top = 4.dp, bottom = 12.dp)
                                 ) {
                                     items(uiState.categories) { (name, color) ->
                                         SuggestionChip(
