@@ -335,8 +335,7 @@ fun GlassSearchBar(
     liquidState: LiquidState,
     onFocusChanged: (Boolean) -> Unit = {}
 ) {
-    val customColors = CinescopeTheme.customColors
-    val activeColor = if (isAiMode) com.example.cinescopesurat.ui.theme.OracleBlue else MaterialTheme.colorScheme.primary
+    val activeColor = if (isAiMode) com.example.cinescopesurat.ui.theme.OracleBlue else com.example.cinescopesurat.ui.theme.DiscoveryCyan
     val focusManager = LocalFocusManager.current
     
     val contentColor by animateColorAsState(
@@ -372,11 +371,7 @@ fun GlassSearchBar(
                     edge = 0.0f
                     saturation = 1.4f
                     dispersion = 0.08f
-                    tint = if (isAiMode) {
-                        activeColor.copy(alpha = 0.15f)
-                    } else {
-                        customColors.glassBackground.copy(alpha = 0.05f)
-                    }
+                    tint = activeColor.copy(alpha = 0.15f)
                 }
         )
 
