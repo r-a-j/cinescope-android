@@ -88,9 +88,11 @@ fun SearchScreen(
                 } else {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(4),
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding(),
                         contentPadding = PaddingValues(
-                            top = 32.dp,
+                            top = 16.dp,
                             start = 16.dp,
                             end = 16.dp,
                             bottom = 240.dp
@@ -456,8 +458,7 @@ fun AiSearchTriggerCard(onTrigger: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .statusBarsPadding()
-            .padding(top = 24.dp) // Extra padding to avoid status bar
+            .padding(top = 8.dp)
             .clip(RoundedCornerShape(28.dp))
             .background(
                 Brush.linearGradient(
