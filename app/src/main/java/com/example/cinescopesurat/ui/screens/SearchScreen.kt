@@ -106,6 +106,14 @@ fun SearchScreen(
                             item(span = { GridItemSpan(4) }) {
                                 Column(modifier = Modifier.padding(top = 16.dp)) {
                                     Text(
+                                        "DISCOVERY",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = com.example.cinescopesurat.ui.theme.DiscoveryCyan,
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = 3.sp,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                    Text(
                                         "CINESCOPE RECOMMENDED",
                                         style = MaterialTheme.typography.displayMedium,
                                         fontWeight = FontWeight.Black,
@@ -140,22 +148,64 @@ fun SearchScreen(
                                     AnimatedContent(
                                         targetState = messages[messageIndex],
                                         transitionSpec = {
-                                            fadeIn(tween(1200, easing = LinearOutSlowInEasing)) + 
-                                            slideInVertically(tween(1200, easing = LinearOutSlowInEasing)) { it / 3 } +
-                                            scaleIn(initialScale = 0.95f, animationSpec = tween(1200, easing = LinearOutSlowInEasing)) togetherWith
-                                            fadeOut(tween(600, easing = FastOutLinearInEasing)) +
-                                            scaleOut(targetScale = 1.05f, animationSpec = tween(600, easing = FastOutLinearInEasing))
+                                            (fadeIn(tween(800)) + 
+                                             scaleIn(initialScale = 0.8f, animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow)) +
+                                             expandVertically(expandFrom = Alignment.Top))
+                                            .togetherWith(
+                                                fadeOut(tween(400)) + 
+                                                scaleOut(targetScale = 1.1f)
+                                            )
                                         },
                                         label = "rotatingSubtext"
                                     ) { text ->
-                                        Text(
-                                            text = text,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                            modifier = Modifier
-                                                .padding(top = 2.dp, end = 48.dp)
-                                                .graphicsLayer { clip = false }
+                                        // Materialize from blur
+                                        var blurTrigger by remember(text) { mutableStateOf(16f) }
+                                        LaunchedEffect(text) { blurTrigger = 0f }
+                                        
+                                        val animatedBlur by animateFloatAsState(
+                                            targetValue = blurTrigger,
+                                            animationSpec = tween(1200, easing = EaseOutExpo),
+                                            label = "blur"
                                         )
+
+                                        Column {
+                                            Text(
+                                                text = text,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                                                modifier = Modifier
+                                                    .padding(top = 4.dp, end = 48.dp)
+                                                    .blur(animatedBlur.dp)
+                                                    .graphicsLayer { 
+                                                        alpha = (1f - (animatedBlur / 16f)).coerceIn(0f, 1f)
+                                                        scaleX = 1f + (animatedBlur / 32f)
+                                                    }
+                                            )
+                                            
+                                            // THE LIQUID SOUL UNDERLINE: High-velocity elastic motion
+                                            Box(
+                                                modifier = Modifier
+                                                    .padding(top = 10.dp)
+                                                    .height(1.5.dp)
+                                                    .fillMaxWidth(0.4f)
+                                                    .clip(CircleShape)
+                                                    .background(
+                                                        Brush.linearGradient(
+                                                            listOf(
+                                                                com.example.cinescopesurat.ui.theme.DiscoveryCyan,
+                                                                com.example.cinescopesurat.ui.theme.OracleBlue,
+                                                                Color.Transparent
+                                                            )
+                                                        )
+                                                    )
+                                                    .graphicsLayer {
+                                                        // Liquid stretch based on blur
+                                                        scaleX = 1.5f - (animatedBlur / 16f)
+                                                        alpha = 1f - (animatedBlur / 16f)
+                                                    }
+                                            )
+                                        }
                                     }
 
                                     Spacer(modifier = Modifier.height(16.dp))
@@ -202,34 +252,6 @@ fun SearchScreen(
                                     onPersonClick = { id -> focusManager.clearFocus(); onPersonClick(id) }
                                 )
                             }
-
-                            // Section: Trending Talent
-                            item(span = { GridItemSpan(4) }) {
-                                Text(
-                                    "TRENDING TALENT",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    letterSpacing = 2.sp,
-                                    modifier = Modifier.padding(top = 24.dp, bottom = 12.dp)
-                                )
-                            }
-
-                                    item(span = { GridItemSpan(4) }) {
-                                        LazyRow(
-                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                        ) {
-                                            items(uiState.trendingPeople) { personResult ->
-                                                TalentCircleItem(
-                                                    person = personResult.person,
-                                                    onClick = { 
-                                                        focusManager.clearFocus()
-                                                        onPersonClick(personResult.person.id)
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
                         }
 
                         if (uiState.showAiTrigger && !uiState.isAiSearchEnabled && uiState.query.isNotEmpty() && uiState.results.isNotEmpty()) {
@@ -480,38 +502,6 @@ fun AiSearchTriggerCard(onTrigger: () -> Unit) {
                 modifier = Modifier.size(40.dp)
             )
         }
-    }
-}
-
-@Composable
-fun TalentCircleItem(person: com.example.cinescopesurat.data.model.Person, onClick: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .width(80.dp)
-            .clickable { onClick() }
-    ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            Image(
-                painter = painterResource(person.imageRes),
-                contentDescription = person.name,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = person.name.split(" ").first(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            textAlign = TextAlign.Center
-        )
     }
 }
 
