@@ -382,10 +382,23 @@ fun GlassSearchBar(
             .onFocusChanged { onFocusChanged(it.isFocused) },
         contentAlignment = Alignment.CenterStart
     ) {
+        val isDark = !MaterialTheme.colorScheme.surface.copy(alpha = 1f).let { 
+            (it.red * 0.299 + it.green * 0.587 + it.blue * 0.114) > 0.5
+        }
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(CircleShape)
+                .background(
+                    Brush.horizontalGradient(
+                        0.0f to Color.Transparent,
+                        0.2f to activeColor.copy(alpha = if (isDark) 0.08f else 0.12f),
+                        0.5f to activeColor.copy(alpha = if (isDark) 0.12f else 0.18f),
+                        0.8f to activeColor.copy(alpha = if (isDark) 0.08f else 0.12f),
+                        1.0f to Color.Transparent
+                    )
+                )
                 .liquid(liquidState) {
                     frost = 3.dp
                     refraction = 0.25f
@@ -393,7 +406,7 @@ fun GlassSearchBar(
                     edge = 0.0f
                     saturation = 1.4f
                     dispersion = 0.08f
-                    tint = activeColor.copy(alpha = 0.15f)
+                    tint = activeColor.copy(alpha = if (isDark) 0.15f else 0.25f)
                 }
         )
 
