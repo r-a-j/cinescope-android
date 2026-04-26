@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,9 +56,19 @@ fun SearchScreen(
     onPersonClick: (Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val focusManager = LocalFocusManager.current
     
     // Dedicated liquid state for the search bar to avoid recursive sampling from NavHost
     val barLiquidState = rememberLiquidState()
+    
+    val keyboardHeight = WindowInsets.ime.getBottom(LocalDensity.current)
+    val isKeyboardOpen = keyboardHeight > 0
+    
+    val barBottomPadding by animateDpAsState(
+        targetValue = if (isKeyboardOpen) 12.dp else 112.dp,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow),
+        label = "barBottomPadding"
+    )
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -89,9 +100,9 @@ fun SearchScreen(
                     ) {
                         // ZERO STATE: DISCOVERY DASHBOARD
                         if (uiState.query.isEmpty()) {
-                            // Section: Feature Title
+                            // Section: Header & Categories combined for tighter spacing
                             item(span = { GridItemSpan(4) }) {
-                                Column(modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)) {
+                                Column(modifier = Modifier.padding(top = 16.dp)) {
                                     Text(
                                         "CINESCOPE RECOMMENDED",
                                         style = MaterialTheme.typography.displayMedium,
@@ -141,35 +152,31 @@ fun SearchScreen(
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                             modifier = Modifier
                                                 .padding(top = 2.dp, end = 48.dp)
-                                                .graphicsLayer { 
-                                                    // Ensure GPU layer for smooth transitions
-                                                    clip = false
-                                                }
+                                                .graphicsLayer { clip = false }
                                         )
                                     }
-                                }
-                            }
 
-                            // Section: Categories (Horizontal Row)
-                            item(span = { GridItemSpan(4) }) {
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    contentPadding = PaddingValues(top = 4.dp, bottom = 12.dp)
-                                ) {
-                                    items(uiState.categories) { (name, color) ->
-                                        SuggestionChip(
-                                            onClick = { viewModel.onQueryChanged(name) },
-                                            label = { Text(name, fontWeight = FontWeight.Bold) },
-                                            colors = SuggestionChipDefaults.suggestionChipColors(
-                                                containerColor = color.copy(alpha = 0.1f),
-                                                labelColor = color
-                                            ),
-                                            border = SuggestionChipDefaults.suggestionChipBorder(
-                                                enabled = true,
-                                                borderColor = color.copy(alpha = 0.3f)
-                                            ),
-                                            shape = RoundedCornerShape(12.dp)
-                                        )
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        contentPadding = PaddingValues(bottom = 12.dp)
+                                    ) {
+                                        items(uiState.categories) { (name, color) ->
+                                            SuggestionChip(
+                                                onClick = { viewModel.onQueryChanged(name) },
+                                                label = { Text(name, fontWeight = FontWeight.Bold) },
+                                                colors = SuggestionChipDefaults.suggestionChipColors(
+                                                    containerColor = color.copy(alpha = 0.1f),
+                                                    labelColor = color
+                                                ),
+                                                border = SuggestionChipDefaults.suggestionChipBorder(
+                                                    enabled = true,
+                                                    borderColor = color.copy(alpha = 0.3f)
+                                                ),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -188,9 +195,9 @@ fun SearchScreen(
                                 SleekGridResultCard(
                                     result = result,
                                     index = index,
-                                    onMovieClick = onMovieClick,
-                                    onTvShowClick = onTvShowClick,
-                                    onPersonClick = onPersonClick
+                                    onMovieClick = { id -> focusManager.clearFocus(); onMovieClick(id) },
+                                    onTvShowClick = { id -> focusManager.clearFocus(); onTvShowClick(id) },
+                                    onPersonClick = { id -> focusManager.clearFocus(); onPersonClick(id) }
                                 )
                             }
 
@@ -206,18 +213,21 @@ fun SearchScreen(
                                 )
                             }
 
-                            item(span = { GridItemSpan(4) }) {
-                                LazyRow(
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                                ) {
-                                    items(uiState.trendingPeople) { personResult ->
-                                        TalentCircleItem(
-                                            person = personResult.person,
-                                            onClick = { onPersonClick(personResult.person.id) }
-                                        )
+                                    item(span = { GridItemSpan(4) }) {
+                                        LazyRow(
+                                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                        ) {
+                                            items(uiState.trendingPeople) { personResult ->
+                                                TalentCircleItem(
+                                                    person = personResult.person,
+                                                    onClick = { 
+                                                        focusManager.clearFocus()
+                                                        onPersonClick(personResult.person.id)
+                                                    }
+                                                )
+                                            }
+                                        }
                                     }
-                                }
-                            }
                         }
 
                         if (uiState.showAiTrigger && !uiState.isAiSearchEnabled && uiState.query.isNotEmpty() && uiState.results.isNotEmpty()) {
@@ -250,9 +260,9 @@ fun SearchScreen(
                             ) { _, result ->
                                 CinematicCompactCard(
                                     result = result,
-                                    onMovieClick = onMovieClick,
-                                    onTvShowClick = onTvShowClick,
-                                    onPersonClick = onPersonClick
+                                    onMovieClick = { id -> focusManager.clearFocus(); onMovieClick(id) },
+                                    onTvShowClick = { id -> focusManager.clearFocus(); onTvShowClick(id) },
+                                    onPersonClick = { id -> focusManager.clearFocus(); onPersonClick(id) }
                                 )
                             }
                         }
@@ -272,7 +282,7 @@ fun SearchScreen(
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
                     .imePadding()
-                    .padding(start = 16.dp, end = 16.dp, bottom = 112.dp)
+                    .padding(start = 16.dp, end = 16.dp, bottom = barBottomPadding)
             ) {
                 GlassSearchBar(
                     query = uiState.query,
