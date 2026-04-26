@@ -31,6 +31,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -70,10 +71,10 @@ fun SearchScreen(
                         .fillMaxSize()
                         .liquefiable(liquidState),
                     contentPadding = PaddingValues(
-                        top = 120.dp,
+                        top = 60.dp,
                         start = 12.dp,
                         end = 12.dp,
-                        bottom = 120.dp
+                        bottom = 200.dp
                     ),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -149,8 +150,9 @@ fun SearchScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .align(Alignment.BottomCenter)
+                    .imePadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 112.dp)
             ) {
                 GlassSearchBar(
                     query = uiState.query,
@@ -205,10 +207,28 @@ fun GlassSearchBar(
     val customColors = CinescopeTheme.customColors
     val activeColor = MaterialTheme.colorScheme.primary
     val focusManager = LocalFocusManager.current
-
+    
     val borderColor by animateColorAsState(
-        targetValue = if (isAiMode) activeColor else Color.Transparent,
+        targetValue = if (isAiMode) activeColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
         label = "border"
+    )
+
+    val containerColor by animateColorAsState(
+        targetValue = if (isAiMode) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+        },
+        label = "containerColor"
+    )
+
+    val contentColor by animateColorAsState(
+        targetValue = if (isAiMode) {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        } else {
+            MaterialTheme.colorScheme.onSurfaceVariant
+        },
+        label = "contentColor"
     )
 
     val height by animateDpAsState(
@@ -228,18 +248,16 @@ fun GlassSearchBar(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(CircleShape)
+                .background(containerColor)
                 .liquid(liquidState) {
-                    frost = 3.dp
-                    refraction = 0.25f
-                    curve = 0.25f
-                    edge = 0.0f
-                    saturation = 1.4f
-                    dispersion = 0.08f
-                    tint = if (isAiMode) activeColor.copy(alpha = 0.05f) else customColors.glassBackground.copy(alpha = 0.05f)
+                    frost = 4.dp
+                    refraction = 0.2f
+                    curve = 0.15f
+                    tint = Color.Transparent
                 }
                 .border(
-                    width = if (isAiMode) 1.dp else 0.dp,
-                    color = borderColor.copy(alpha = 0.5f),
+                    width = 1.dp,
+                    color = borderColor.copy(alpha = 0.3f),
                     shape = CircleShape
                 )
         )
@@ -251,7 +269,7 @@ fun GlassSearchBar(
             Icon(
                 if (isAiMode) Icons.Default.AutoAwesome else Icons.Default.Search,
                 contentDescription = null,
-                tint = if (isAiMode) activeColor else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                tint = if (isAiMode) activeColor else contentColor.copy(alpha = 0.6f),
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(16.dp))
@@ -261,7 +279,7 @@ fun GlassSearchBar(
                 placeholder = { 
                     Text(
                         if (isAiMode) "Ask the Oracle anything..." else "Search movies, TV, cast...",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        color = contentColor.copy(alpha = 0.5f),
                         style = MaterialTheme.typography.bodyLarge
                     ) 
                 },
@@ -294,7 +312,7 @@ fun GlassSearchBar(
                     Icon(
                         Icons.Default.Close,
                         contentDescription = "Clear",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                        tint = contentColor.copy(alpha = 0.4f),
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -427,18 +445,29 @@ fun SleekGridResultCard(
             contentScale = ContentScale.Crop
         )
 
-        if (imageRes == com.example.cinescopesurat.R.drawable.placeholder) {
-            Box(
-                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f)).padding(8.dp),
-                contentAlignment = Alignment.Center
-            ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color.copy(alpha = 0.4f),
+                    modifier = Modifier.size(if (imageRes == com.example.cinescopesurat.R.drawable.placeholder) 48.dp else 24.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 3,
-                    modifier = Modifier.graphicsLayer { this.alpha = 1f }
+                    text = title.uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 1.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                    maxLines = 2
                 )
             }
         }
