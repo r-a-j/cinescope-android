@@ -22,11 +22,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,9 +46,13 @@ import io.github.fletchmckee.liquid.liquefiable
 @Composable
 fun SearchScreen(
     liquidState: LiquidState = rememberLiquidState(),
-    viewModel: SearchViewModel = hiltViewModel()
+    viewModel: SearchViewModel = hiltViewModel(),
+    onMovieClick: (Int) -> Unit = {},
+    onTvShowClick: (Int) -> Unit = {},
+    onPersonClick: (Int) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var isSearchBarFocused by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -55,8 +61,8 @@ fun SearchScreen(
         AiPulseBackground(enabled = uiState.isAiSearchEnabled)
 
         Box(modifier = Modifier.fillMaxSize()) {
-            if (uiState.isLoading) {
-                SearchLoadingState()
+            if (uiState.isLoading && uiState.isAiSearchEnabled) {
+                OracleLoadingState(uiState.oracleThoughts)
             } else {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(4),
@@ -72,7 +78,33 @@ fun SearchScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (uiState.showAiTrigger && !uiState.isAiSearchEnabled) {
+                    // ZERO STATE: Suggestions
+                    if (uiState.query.isEmpty() && isSearchBarFocused) {
+                        item(span = { GridItemSpan(4) }) {
+                            Text(
+                                "POPULAR NOW",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 2.sp,
+                                modifier = Modifier.padding(vertical = 16.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        itemsIndexed(
+                            items = uiState.suggestions,
+                            span = { index, _ -> GridItemSpan(if (index == 0) 4 else 2) }
+                        ) { index, result ->
+                            SleekGridResultCard(
+                                result = result,
+                                index = index,
+                                onMovieClick = onMovieClick,
+                                onTvShowClick = onTvShowClick,
+                                onPersonClick = onPersonClick
+                            )
+                        }
+                    }
+
+                    if (uiState.showAiTrigger && !uiState.isAiSearchEnabled && uiState.query.isNotEmpty()) {
                         item(span = { GridItemSpan(4) }) {
                             AiSearchTriggerCard(onTrigger = { viewModel.triggerAiSearch() })
                         }
@@ -86,12 +118,27 @@ fun SearchScreen(
                                 is SearchResult.TvShow -> "t_${result.item.id}"
                                 is SearchResult.PersonResult -> "p_${result.person.id}"
                             }
+                        },
+                        span = { index, _ -> 
+                            // BENTO SPAN LOGIC
+                            val span = when {
+                                index % 7 == 0 -> 4
+                                index % 7 == 1 || index % 7 == 2 -> 2
+                                else -> 1
+                            }
+                            GridItemSpan(span)
                         }
                     ) { index, result ->
-                        SleekGridResultCard(result, index)
+                        SleekGridResultCard(
+                            result = result,
+                            index = index,
+                            onMovieClick = onMovieClick,
+                            onTvShowClick = onTvShowClick,
+                            onPersonClick = onPersonClick
+                        )
                     }
 
-                    if (uiState.query.isNotEmpty() && uiState.results.isEmpty()) {
+                    if (uiState.query.isNotEmpty() && uiState.results.isEmpty() && !uiState.isLoading) {
                         item(span = { GridItemSpan(4) }) {
                             SearchEmptyState(query = uiState.query) { viewModel.triggerAiSearch() }
                         }
@@ -109,7 +156,8 @@ fun SearchScreen(
                     query = uiState.query,
                     onQueryChanged = { viewModel.onQueryChanged(it) },
                     isAiMode = uiState.isAiSearchEnabled,
-                    liquidState = liquidState
+                    liquidState = liquidState,
+                    onFocusChanged = { isSearchBarFocused = it }
                 )
             }
         }
@@ -151,20 +199,29 @@ fun GlassSearchBar(
     query: String, 
     onQueryChanged: (String) -> Unit, 
     isAiMode: Boolean,
-    liquidState: LiquidState
+    liquidState: LiquidState,
+    onFocusChanged: (Boolean) -> Unit = {}
 ) {
     val customColors = CinescopeTheme.customColors
     val activeColor = MaterialTheme.colorScheme.primary
-    
+    val focusManager = LocalFocusManager.current
+
     val borderColor by animateColorAsState(
         targetValue = if (isAiMode) activeColor else Color.Transparent,
         label = "border"
     )
 
+    val height by animateDpAsState(
+        targetValue = if (isAiMode) 80.dp else 64.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessLow),
+        label = "height"
+    )
+
     Box(
         modifier = Modifier
-            .height(64.dp)
-            .fillMaxWidth(),
+            .height(height)
+            .fillMaxWidth()
+            .onFocusChanged { onFocusChanged(it.isFocused) },
         contentAlignment = Alignment.CenterStart
     ) {
         Box(
@@ -228,7 +285,10 @@ fun GlassSearchBar(
                 exit = fadeOut() + scaleOut()
             ) {
                 IconButton(
-                    onClick = { onQueryChanged("") },
+                    onClick = { 
+                        onQueryChanged("")
+                        focusManager.clearFocus()
+                    },
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
@@ -292,7 +352,13 @@ fun AiSearchTriggerCard(onTrigger: () -> Unit) {
 }
 
 @Composable
-fun SleekGridResultCard(result: SearchResult, index: Int) {
+fun SleekGridResultCard(
+    result: SearchResult,
+    index: Int,
+    onMovieClick: (Int) -> Unit = {},
+    onTvShowClick: (Int) -> Unit = {},
+    onPersonClick: (Int) -> Unit = {}
+) {
     val (title, icon, color, imageRes) = when (result) {
         is SearchResult.Movie -> Quadruple(result.item.title, Icons.Default.Movie, Color(0xFFF85149), result.item.posterRes)
         is SearchResult.TvShow -> Quadruple(result.item.title, Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterRes)
@@ -344,7 +410,13 @@ fun SleekGridResultCard(result: SearchResult, index: Int) {
                         tryAwaitRelease()
                         isPressed = false
                     },
-                    onTap = { /* Navigate */ }
+                    onTap = { 
+                        when (result) {
+                            is SearchResult.Movie -> onMovieClick(result.item.id)
+                            is SearchResult.TvShow -> onTvShowClick(result.item.id)
+                            is SearchResult.PersonResult -> onPersonClick(result.person.id)
+                        }
+                    }
                 )
             }
     ) {
@@ -394,24 +466,59 @@ fun SleekGridResultCard(result: SearchResult, index: Int) {
 }
 
 @Composable
-fun SearchLoadingState() {
-    Column(
+fun OracleLoadingState(thought: String) {
+    Box(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(120.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp
+                )
+                Icon(
+                    Icons.Default.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(48.dp))
+            
+            AnimatedContent(
+                targetState = thought,
+                transitionSpec = {
+                    fadeIn(tween(500)) + slideInVertically { it } togetherWith
+                    fadeOut(tween(500)) + slideOutVertically { -it }
+                },
+                label = "thought"
+            ) { text ->
+                Text(
+                    text = text.uppercase(),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 40.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchLoadingState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(
             color = MaterialTheme.colorScheme.primary,
             strokeWidth = 4.dp,
             modifier = Modifier.size(48.dp)
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            "Consulting the Oracle...",
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary,
-            letterSpacing = 1.sp
         )
     }
 }

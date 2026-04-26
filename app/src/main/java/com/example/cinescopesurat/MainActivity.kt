@@ -21,14 +21,22 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import androidx.navigation.NavDestination.Companion.hasRoute
 import com.example.cinescopesurat.ui.components.BottomNavBar
 import com.example.cinescopesurat.ui.navigation.Route
+import com.example.cinescopesurat.ui.navigation.bottomNavItems
 import com.example.cinescopesurat.ui.screens.PulseScreen
 import com.example.cinescopesurat.ui.screens.SearchScreen
 import com.example.cinescopesurat.ui.screens.SettingsScreen
+import com.example.cinescopesurat.ui.screens.MovieDetailsScreen
+import com.example.cinescopesurat.ui.screens.TvShowDetailsScreen
+import com.example.cinescopesurat.ui.screens.PersonDetailsScreen
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.ThemeViewModel
+import androidx.compose.animation.*
 import io.github.fletchmckee.liquid.liquefiable
 import io.github.fletchmckee.liquid.rememberLiquidState
 import dagger.hilt.android.AndroidEntryPoint
@@ -69,6 +77,12 @@ class MainActivity : ComponentActivity() {
 fun MainScreen() {
     val navController = rememberNavController()
     val liquidState = rememberLiquidState()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+
+    val showBottomBar = bottomNavItems.any { item ->
+        currentDestination?.hasRoute(item.route::class) ?: false
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -78,16 +92,40 @@ fun MainScreen() {
                 .fillMaxSize()
                 .liquefiable(liquidState),
         ) {
-            composable<Route.Pulse> { PulseScreen() }
+            composable<Route.Pulse> { 
+                PulseScreen(onMovieClick = { id -> navController.navigate(Route.MovieDetails(id)) }) 
+            }
             composable<Route.Oracle> { PlaceholderScreen("Oracle") }
             composable<Route.Vault> { PlaceholderScreen("Vault") }
             composable<Route.SocialHub> { PlaceholderScreen("Social Hub") }
             composable<Route.Identity> { PlaceholderScreen("Identity") }
-            composable<Route.Search> { SearchScreen(liquidState = liquidState) }
+            composable<Route.Search> { SearchScreen(
+                liquidState = liquidState,
+                onMovieClick = { id -> navController.navigate(Route.MovieDetails(id)) },
+                onTvShowClick = { id -> navController.navigate(Route.TvShowDetails(id)) },
+                onPersonClick = { id -> navController.navigate(Route.PersonDetails(id)) }
+            ) }
             composable<Route.Settings> { SettingsScreen() }
+            composable<Route.MovieDetails> { backStackEntry ->
+                val details = backStackEntry.toRoute<Route.MovieDetails>()
+                MovieDetailsScreen(id = details.id, onBack = { navController.popBackStack() })
+            }
+            composable<Route.TvShowDetails> { backStackEntry ->
+                val details = backStackEntry.toRoute<Route.TvShowDetails>()
+                TvShowDetailsScreen(id = details.id, onBack = { navController.popBackStack() })
+            }
+            composable<Route.PersonDetails> { backStackEntry ->
+                val details = backStackEntry.toRoute<Route.PersonDetails>()
+                PersonDetailsScreen(id = details.id, onBack = { navController.popBackStack() })
+            }
         }
         
-        Box(modifier = Modifier.align(Alignment.BottomCenter)) {
+        AnimatedVisibility(
+            visible = showBottomBar,
+            enter = slideInVertically { it } + fadeIn(),
+            exit = slideOutVertically { it } + fadeOut(),
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
             BottomNavBar(navController, liquidState)
         }
     }

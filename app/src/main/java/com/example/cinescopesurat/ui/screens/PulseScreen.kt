@@ -32,7 +32,10 @@ import com.example.cinescopesurat.data.model.MediaItem
 import com.example.cinescopesurat.ui.viewmodel.PulseViewModel
 
 @Composable
-fun PulseScreen(viewModel: PulseViewModel = hiltViewModel()) {
+fun PulseScreen(
+    onMovieClick: (Int) -> Unit = {},
+    viewModel: PulseViewModel = hiltViewModel()
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sampleMovies = uiState.trendingMovies
 
@@ -48,7 +51,7 @@ fun PulseScreen(viewModel: PulseViewModel = hiltViewModel()) {
         ) {
             // CINEMATIC HERO
             if (sampleMovies.isNotEmpty()) {
-                HeroSpotlight(sampleMovies.first())
+                HeroSpotlight(sampleMovies.first(), onMovieClick)
             }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -60,7 +63,7 @@ fun PulseScreen(viewModel: PulseViewModel = hiltViewModel()) {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(sampleMovies) { movie ->
-                PulseMovieCard(movie)
+                PulseMovieCard(movie, onClick = { onMovieClick(movie.id) })
             }
         }
 
@@ -79,7 +82,7 @@ fun PulseScreen(viewModel: PulseViewModel = hiltViewModel()) {
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             items(sampleMovies.reversed()) { movie ->
-                PulseMovieCard(movie, small = true)
+                PulseMovieCard(movie, small = true, onClick = { onMovieClick(movie.id) })
             }
         }
     }
@@ -87,11 +90,12 @@ fun PulseScreen(viewModel: PulseViewModel = hiltViewModel()) {
 }
 
 @Composable
-fun HeroSpotlight(movie: MediaItem) {
+fun HeroSpotlight(movie: MediaItem, onClick: (Int) -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(550.dp)
+            .clickable { onClick(movie.id) }
     ) {
         Image(
             painter = painterResource(movie.backdropRes),
@@ -199,11 +203,15 @@ fun PulseSectionHeader(tag: String, title: String) {
 }
 
 @Composable
-fun PulseMovieCard(movie: MediaItem, small: Boolean = false) {
+fun PulseMovieCard(movie: MediaItem, small: Boolean = false, onClick: () -> Unit = {}) {
     val width = if (small) 140.dp else 180.dp
     val height = if (small) 200.dp else 260.dp
     
-    Column(modifier = Modifier.width(width)) {
+    Column(
+        modifier = Modifier
+            .width(width)
+            .clickable { onClick() }
+    ) {
         Box(
             modifier = Modifier
                 .width(width)

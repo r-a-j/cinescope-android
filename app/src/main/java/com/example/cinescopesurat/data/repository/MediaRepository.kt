@@ -84,4 +84,16 @@ class MediaRepository @Inject constructor() {
     fun searchPeople(query: String): Flow<List<Person>> = flow {
         emit(samplePeople.filter { it.name.contains(query, ignoreCase = true) })
     }
+
+    fun getMovieById(id: Int): Flow<MediaItem?> = flow {
+        emit(sampleMovies.find { it.id == id })
+    }
+
+    fun getTvShowById(id: Int): Flow<MediaItem?> = flow {
+        emit(sampleTvShows.find { it.id == id })
+    }
+
+    fun getPersonById(id: Int): Flow<Person?> = flow {
+        emit(samplePeople.find { it.id == id })
+    }
 }

@@ -15,6 +15,9 @@ sealed interface Route {
     @Serializable object Identity : Route
     @Serializable object Search : Route
     @Serializable object Settings : Route
+    @Serializable data class MovieDetails(val id: Int) : Route
+    @Serializable data class TvShowDetails(val id: Int) : Route
+    @Serializable data class PersonDetails(val id: Int) : Route
 }
 
 data class BottomNavItem(
