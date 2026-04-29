@@ -1,8 +1,13 @@
 package com.example.cinescopesurat.ui.screens
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -14,12 +19,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -27,14 +33,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.runtime.getValue
 import com.example.cinescopesurat.data.model.MediaItem
+import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.PulseViewModel
+import io.github.fletchmckee.liquid.LiquidState
+import io.github.fletchmckee.liquid.liquid
+import io.github.fletchmckee.liquid.rememberLiquidState
 
 @Composable
 fun PulseScreen(
     onMovieClick: (Int) -> Unit = {},
-    viewModel: PulseViewModel = hiltViewModel()
+    viewModel: PulseViewModel = hiltViewModel(),
+    liquidState: LiquidState = rememberLiquidState()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sampleMovies = uiState.trendingMovies
@@ -51,51 +61,70 @@ fun PulseScreen(
         ) {
             // CINEMATIC HERO
             if (sampleMovies.isNotEmpty()) {
-                HeroSpotlight(sampleMovies.first(), onMovieClick)
+                HeroSpotlight(sampleMovies.first(), liquidState, onMovieClick)
             }
 
-        Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-        // LIVE PULSE SECTION
-        PulseSectionHeader("LIVE PULSE", "TRENDING NOW")
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(sampleMovies) { movie ->
-                PulseMovieCard(movie, onClick = { onMovieClick(movie.id) })
+            // LIVE PULSE SECTION
+            PulseSectionHeader("LIVE PULSE", "TRENDING NOW")
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(sampleMovies) { movie ->
+                    PulseMovieCard(movie) { onMovieClick(movie.id) }
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(40.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
-        // DISCOVER BENTO
-        PulseSectionHeader("DISCOVER", "GENRES & MORE")
-        DiscoverBentoGrid()
-        
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        // RECENTLY ADDED
-        PulseSectionHeader("RECENT", "NEW ARRIVALS")
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(sampleMovies.reversed()) { movie ->
-                PulseMovieCard(movie, small = true, onClick = { onMovieClick(movie.id) })
+            // DISCOVER BENTO
+            PulseSectionHeader("DISCOVER", "GENRES & MORE")
+            DiscoverBentoGrid()
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // RECENTLY ADDED
+            PulseSectionHeader("RECENT", "NEW ARRIVALS")
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(sampleMovies.reversed()) { movie ->
+                    PulseMovieCard(movie, small = true) { onMovieClick(movie.id) }
+                }
             }
         }
     }
 }
-}
 
 @Composable
-fun HeroSpotlight(movie: MediaItem, onClick: (Int) -> Unit = {}) {
+fun HeroSpotlight(
+    movie: MediaItem,
+    liquidState: LiquidState,
+    onClick: (Int) -> Unit = {}
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "heroScale"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(550.dp)
-            .clickable { onClick(movie.id) }
+            .height(580.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onClick(movie.id) }
     ) {
         Image(
             painter = painterResource(movie.backdropRes),
@@ -103,80 +132,108 @@ fun HeroSpotlight(movie: MediaItem, onClick: (Int) -> Unit = {}) {
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
-        
+
         // Cinematic Gradient Overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        0.4f to Color.Transparent,
-                        0.7f to MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
+                        0.3f to Color.Transparent,
+                        0.7f to MaterialTheme.colorScheme.background.copy(alpha = 0.4f),
                         1.0f to MaterialTheme.colorScheme.background
                     )
                 )
         )
-        
-        Column(
+
+        // GLASS FROSTED CARD
+        val glassColor = CinescopeTheme.customColors.glassBackground
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(24.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(32.dp))
+                .liquid(liquidState) {
+                    frost = 8.dp
+                    refraction = 0.15f
+                    curve = 0.1f
+                    tint = glassColor.copy(alpha = 0.15f)
+                }
+                .padding(24.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = RoundedCornerShape(4.dp)
-                ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            "FEATURED",
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        "PREMIUM",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
+                        "IMDb ${movie.rating}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                        fontWeight = FontWeight.Black
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 Text(
-                    "IMDb ${movie.rating}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    fontWeight = FontWeight.Bold
+                    text = movie.title.uppercase(),
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = (-1.5).sp,
+                    lineHeight = 46.sp,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = movie.title.uppercase(),
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.Black,
-                letterSpacing = (-1).sp,
-                lineHeight = 44.sp
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Button(
-                    onClick = { },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
-                ) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("WATCH TRAILER", fontWeight = FontWeight.Bold)
-                }
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                IconButton(
-                    onClick = { },
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Icon(Icons.Default.Star, contentDescription = "Favorite")
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Button(
+                        onClick = { },
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                        contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("WATCH TRAILER", fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                    }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    IconButton(
+                        onClick = { },
+                        modifier = Modifier
+                            .size(56.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                    ) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = "Favorite",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             }
         }
@@ -190,33 +247,48 @@ fun PulseSectionHeader(tag: String, title: String) {
             tag,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Black,
             letterSpacing = 2.sp
         )
         Text(
             title,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Black,
-            letterSpacing = (-0.5).sp
+            letterSpacing = (-1).sp
         )
     }
 }
 
 @Composable
 fun PulseMovieCard(movie: MediaItem, small: Boolean = false, onClick: () -> Unit = {}) {
-    val width = if (small) 140.dp else 180.dp
-    val height = if (small) 200.dp else 260.dp
-    
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "cardScale"
+    )
+
+    val width = if (small) 140.dp else 190.dp
+    val height = if (small) 210.dp else 280.dp
+
     Column(
         modifier = Modifier
             .width(width)
-            .clickable { onClick() }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onClick() }
     ) {
         Box(
             modifier = Modifier
                 .width(width)
                 .height(height)
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(28.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
         ) {
             Image(
@@ -225,103 +297,152 @@ fun PulseMovieCard(movie: MediaItem, small: Boolean = false, onClick: () -> Unit
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
-            
-            // Rating Tag
+
+            // Glass Rating Tag
             Surface(
-                modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
-                color = Color.Black.copy(alpha = 0.6f),
-                shape = RoundedCornerShape(8.dp)
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp),
+                color = Color.Black.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text(
-                    movie.rating,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFD700),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        movie.rating,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White,
+                        fontWeight = FontWeight.Black
+                    )
+                }
             }
         }
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         Text(
             movie.title,
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            maxLines = 1
+            maxLines = 1,
+            letterSpacing = (-0.5).sp
         )
         Text(
             movie.type.uppercase(),
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            letterSpacing = 1.sp
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+            letterSpacing = 1.5.sp,
+            fontWeight = FontWeight.Bold
         )
     }
 }
 
 @Composable
 fun DiscoverBentoGrid() {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .height(200.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Large Tile
-        Box(
+        Row(
             modifier = Modifier
-                .weight(1.5f)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(32.dp))
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .clickable { }
-                .padding(20.dp)
+                .fillMaxWidth()
+                .height(220.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Column(modifier = Modifier.align(Alignment.BottomStart)) {
-                Text(
-                    "TOP 50",
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    "MOST WATCHED",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    lineHeight = 24.sp
-                )
+            // Large Featured Tile
+            Box(
+                modifier = Modifier
+                    .weight(1.6f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(32.dp))
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                MaterialTheme.colorScheme.primaryContainer,
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                            )
+                        )
+                    )
+                    .clickable { }
+                    .padding(24.dp)
+            ) {
+                Column(modifier = Modifier.align(Alignment.BottomStart)) {
+                    Text(
+                        "CURATED",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        letterSpacing = 2.sp
+                    )
+                    Text(
+                        "ORACLE'S\nCHOICE",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        lineHeight = 32.sp,
+                        letterSpacing = (-1).sp
+                    )
+                }
+            }
+
+            // Vertical Stack
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                BentoSmallTile("SCI-FI", MaterialTheme.colorScheme.secondaryContainer, Modifier.weight(1f))
+                BentoSmallTile("ACTION", MaterialTheme.colorScheme.tertiaryContainer, Modifier.weight(1f))
             }
         }
-        
-        // Vertical Stack
-        Column(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            BentoSmallTile("SCI-FI", MaterialTheme.colorScheme.secondaryContainer, Modifier.weight(1f))
-            BentoSmallTile("ACTION", MaterialTheme.colorScheme.tertiaryContainer, Modifier.weight(1f))
+            BentoSmallTile("HORROR", Color(0xFF2D2D2D), Modifier.weight(1f), isDark = true)
+            BentoSmallTile("DRAMA", MaterialTheme.colorScheme.surfaceVariant, Modifier.weight(1f))
+            BentoSmallTile("COMEDY", MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), Modifier.weight(0.8f))
         }
     }
 }
 
 @Composable
-fun BentoSmallTile(label: String, color: Color, modifier: Modifier = Modifier) {
+fun BentoSmallTile(
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+    isDark: Boolean = false
+) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(28.dp))
             .background(color)
             .clickable { }
-            .padding(16.dp),
+            .padding(20.dp),
         contentAlignment = Alignment.BottomStart
     ) {
         Text(
             label,
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Black,
-            color = MaterialTheme.colorScheme.onSurface
+            color = if (isDark) Color.White else MaterialTheme.colorScheme.onSurface,
+            letterSpacing = 1.sp
         )
     }
 }

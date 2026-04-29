@@ -93,7 +93,10 @@ fun MainScreen() {
                 .liquefiable(liquidState),
         ) {
             composable<Route.Pulse> { 
-                PulseScreen(onMovieClick = { id -> navController.navigate(Route.MovieDetails(id)) }) 
+                PulseScreen(
+                    onMovieClick = { id -> navController.navigate(Route.MovieDetails(id)) },
+                    liquidState = liquidState
+                )
             }
             composable<Route.Oracle> { PlaceholderScreen("Oracle") }
             composable<Route.Vault> { PlaceholderScreen("Vault") }
