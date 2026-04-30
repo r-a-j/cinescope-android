@@ -90,7 +90,7 @@ fun SearchScreen(
                         columns = GridCells.Fixed(4),
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
-                            top = 160.dp, // Content starts behind the header
+                            top = 100.dp, // Content starts behind the header
                             start = 16.dp,
                             end = 16.dp,
                             bottom = 240.dp

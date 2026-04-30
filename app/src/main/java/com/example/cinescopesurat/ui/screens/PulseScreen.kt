@@ -58,7 +58,7 @@ fun PulseScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(top = 160.dp, bottom = 120.dp) // Seamless start behind the glass
+                .padding(top = 0.dp, bottom = 120.dp) // Seamless start behind the glass
         ) {
             // CINEMATIC HERO
             if (sampleMovies.isNotEmpty()) {
