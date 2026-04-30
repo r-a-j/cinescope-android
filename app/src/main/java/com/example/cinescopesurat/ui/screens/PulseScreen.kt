@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cinescopesurat.data.model.MediaItem
+import com.example.cinescopesurat.ui.components.SectionHeader
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.PulseViewModel
 import io.github.fletchmckee.liquid.LiquidState
@@ -67,7 +68,7 @@ fun PulseScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             // LIVE PULSE SECTION
-            PulseSectionHeader("LIVE PULSE", "TRENDING NOW")
+            SectionHeader("LIVE PULSE", "TRENDING NOW")
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -80,13 +81,13 @@ fun PulseScreen(
             Spacer(modifier = Modifier.height(40.dp))
 
             // DISCOVER BENTO
-            PulseSectionHeader("DISCOVER", "GENRES & MORE")
+            SectionHeader("DISCOVER", "GENRES & MORE")
             DiscoverBentoGrid()
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // RECENTLY ADDED
-            PulseSectionHeader("RECENT", "NEW ARRIVALS")
+            SectionHeader("RECENT", "NEW ARRIVALS")
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -240,24 +241,6 @@ fun HeroSpotlight(
     }
 }
 
-@Composable
-fun PulseSectionHeader(tag: String, title: String) {
-    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
-        Text(
-            tag,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.Black,
-            letterSpacing = 2.sp
-        )
-        Text(
-            title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Black,
-            letterSpacing = (-1).sp
-        )
-    }
-}
 
 @Composable
 fun PulseMovieCard(movie: MediaItem, small: Boolean = false, onClick: () -> Unit = {}) {

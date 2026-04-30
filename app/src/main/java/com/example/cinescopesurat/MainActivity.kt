@@ -28,12 +28,15 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import com.example.cinescopesurat.ui.components.BottomNavBar
 import com.example.cinescopesurat.ui.navigation.Route
 import com.example.cinescopesurat.ui.navigation.bottomNavItems
+import com.example.cinescopesurat.ui.screens.SocialHubScreen
+import com.example.cinescopesurat.ui.screens.VaultScreen
 import com.example.cinescopesurat.ui.screens.PulseScreen
 import com.example.cinescopesurat.ui.screens.SearchScreen
 import com.example.cinescopesurat.ui.screens.SettingsScreen
 import com.example.cinescopesurat.ui.screens.MovieDetailsScreen
 import com.example.cinescopesurat.ui.screens.TvShowDetailsScreen
 import com.example.cinescopesurat.ui.screens.PersonDetailsScreen
+import com.example.cinescopesurat.ui.screens.OracleScreen
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.ThemeViewModel
 import androidx.compose.animation.*
@@ -98,9 +101,14 @@ fun MainScreen() {
                     liquidState = liquidState
                 )
             }
-            composable<Route.Oracle> { PlaceholderScreen("Oracle") }
-            composable<Route.Vault> { PlaceholderScreen("Vault") }
-            composable<Route.SocialHub> { PlaceholderScreen("Social Hub") }
+            composable<Route.Oracle> {
+                OracleScreen(
+                    onMovieClick = { id -> navController.navigate(Route.MovieDetails(id)) },
+                    liquidState = liquidState
+                )
+            }
+            composable<Route.Vault> { VaultScreen() }
+            composable<Route.SocialHub> { SocialHubScreen() }
             composable<Route.Identity> { PlaceholderScreen("Identity") }
             composable<Route.Search> { SearchScreen(
                 onMovieClick = { id -> navController.navigate(Route.MovieDetails(id)) },
