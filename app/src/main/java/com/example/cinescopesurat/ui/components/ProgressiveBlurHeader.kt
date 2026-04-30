@@ -4,70 +4,88 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.*
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.draw.drawWithCache
 import io.github.fletchmckee.liquid.LiquidState
 import io.github.fletchmckee.liquid.liquid
 
 /**
- * Optimized Apple-style Progressive Blur Header.
- * Uses 5 overlapping layers for high performance and smooth visual transition.
+ * Industry-Standard Progressive Blur Header.
+ * Optimized for 60fps performance using 3-layer multiplexing and zero-recomposition draw logic.
  */
 @Composable
 fun ProgressiveBlurHeader(
     liquidState: LiquidState,
     modifier: Modifier = Modifier,
-    height: Dp = 140.dp,
-    tintColor: Color? = null,
-    intensity: Float = 1f
+    height: Dp = 150.dp, // Premium tall header
+    intensityProvider: () -> Float
 ) {
-    if (intensity <= 0.01f) return
-    
     val customColors = com.example.cinescopesurat.ui.theme.CinescopeTheme.customColors
-    val glassTint = tintColor ?: customColors.glassBackground.copy(alpha = 0.03f)
-    
+    val glassTint = customColors.glassBackground.copy(alpha = 0.04f)
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
-            .graphicsLayer { 
-                alpha = intensity.coerceIn(0f, 1f)
+            .graphicsLayer {
+                // Moving all animation logic to the DRAW phase to eliminate lag
+                alpha = intensityProvider().coerceIn(0f, 1f)
+                // Single parent buffer for the entire effect group
+                compositingStrategy = CompositingStrategy.Offscreen
             }
     ) {
-        // LAYERED PROGRESSIVE BLUR (5 Layers for Performance)
-        // We use a non-linear distribution of blur radii for a more natural "fade"
-        
-        // 1. Heavy Base (64dp) - Covers the top most part
-        BlurLayer(liquidState, 64.dp, 0.0f, 0.4f)
-        
-        // 2. Strong (32dp) - Deep overlap
-        BlurLayer(liquidState, 32.dp, 0.2f, 0.6f)
-        
-        // 3. Medium (16.dp)
-        BlurLayer(liquidState, 16.dp, 0.4f, 0.8f)
-        
-        // 4. Soft (8.dp)
-        BlurLayer(liquidState, 8.dp, 0.6f, 0.9f)
-        
-        // 5. Hint (2.dp) - The final "shimmer" before clear
-        BlurLayer(liquidState, 2.dp, 0.8f, 1.0f)
-        
-        // Ambient glass tint that provides the "surface" feel
+        // LAYER 1: PEAK HALO (64dp Blur + Light Dispersion)
+        // This creates the "Halo" effect where content colors bleed beautifully at the top
+        BlurLayer(
+            liquidState = liquidState, 
+            radius = 64.dp, 
+            stop1 = 0.0f, 
+            stop2 = 0.45f,
+            dispersion = 0.4f,
+            refraction = 0.2f
+        )
+
+        // LAYER 2: THE GLASS CORE (16dp Blur)
+        // The main body of the blur, providing a consistent frosted look
+        BlurLayer(
+            liquidState = liquidState, 
+            radius = 16.dp, 
+            stop1 = 0.30f, 
+            stop2 = 0.75f
+        )
+
+        // LAYER 3: THE SOFT ENTRY (2dp Blur)
+        // High-frequency detail for seamless integration with the content area
+        BlurLayer(
+            liquidState = liquidState, 
+            radius = 2.dp, 
+            stop1 = 0.65f, 
+            stop2 = 1.0f
+        )
+
+        // PEAK GLASS HIGHLIGHT (Subtle light reflection at the top edge)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0f to customColors.glassHighlight.copy(alpha = 0.1f),
+                        0.3f to Color.Transparent
+                    )
+                )
+        )
+
+        // AMBIENT GLASS TINT
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         0f to glassTint,
-                        0.6f to glassTint.copy(alpha = 0.01f),
-                        1f to Color.Transparent
+                        0.5f to glassTint.copy(alpha = 0.01f),
+                        0.9f to Color.Transparent
                     )
                 )
         )
@@ -79,34 +97,36 @@ private fun BlurLayer(
     liquidState: LiquidState,
     radius: Dp,
     stop1: Float,
-    stop2: Float
+    stop2: Float,
+    dispersion: Float = 0f,
+    refraction: Float = 0f
 ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // Offscreen strategy is expensive, but required for BlendMode.DstIn.
-            // With 5 layers, modern devices should handle this at 60fps.
-            .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
             .liquid(liquidState) {
                 frost = radius
-                refraction = 0.0f
+                this.dispersion = dispersion
+                this.refraction = refraction
                 curve = 0.0f
                 edge = 0.0f
                 shape = RectangleShape
                 tint = Color.Transparent
             }
-            .drawWithContent {
-                drawContent()
-                // Use a smooth quadratic-like fade for the alpha mask
-                drawRect(
-                    brush = Brush.verticalGradient(
-                        0f to Color.Black,
-                        stop1 to Color.Black,
-                        stop2 to Color.Transparent,
-                        1f to Color.Transparent
-                    ),
-                    blendMode = BlendMode.DstIn
+            .drawWithCache {
+                // Pre-allocate the mask to avoid frame-time allocations (Garbage Collection spikes)
+                val maskBrush = Brush.verticalGradient(
+                    0.0f to Color.Black,
+                    stop1 to Color.Black,
+                    // Quadratic easing to hide layer seams
+                    (stop1 + (stop2 - stop1) * 0.4f) to Color.Black.copy(alpha = 0.8f),
+                    stop2 to Color.Transparent
                 )
+                onDrawWithContent {
+                    drawContent()
+                    // Apply alpha mask to the blurred slice
+                    drawRect(brush = maskBrush, blendMode = BlendMode.DstIn)
+                }
             }
     )
 }

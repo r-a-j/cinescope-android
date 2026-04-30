@@ -101,13 +101,21 @@ fun MainScreen() {
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
-                scrollOffset = (scrollOffset + consumed.y).coerceIn(-200f, 0f)
+                // Blur the header on any downward scroll (consumed.y < 0)
+                if (consumed.y < 0) {
+                    scrollOffset = (scrollOffset + consumed.y).coerceIn(-120f, 0f)
+                }
+                // Clear the header ONLY when upward scroll is unconsumed (meaning child reached top)
+                if (available.y > 0) {
+                    scrollOffset = (scrollOffset + available.y).coerceIn(-120f, 0f)
+                }
                 return Offset.Zero
             }
         }
     }
 
-    val blurIntensity = (-scrollOffset / 80f).coerceIn(0f, 1f)
+    // range 120f ensures a buttery smooth transition
+    val blurIntensityProvider = { (-scrollOffset / 120f).coerceIn(0f, 1f) }
 
     val showBottomBar = bottomNavItems.any { item ->
         currentDestination?.hasRoute(item.route::class) ?: false
@@ -163,7 +171,7 @@ fun MainScreen() {
         // TOP PROGRESSIVE BLUR (Apple-style)
         ProgressiveBlurHeader(
             liquidState = liquidState,
-            intensity = blurIntensity
+            intensityProvider = blurIntensityProvider
         )
         
         AnimatedVisibility(
