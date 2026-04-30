@@ -11,8 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -25,7 +24,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.geometry.Offset
 import com.example.cinescopesurat.ui.components.BottomNavBar
+import com.example.cinescopesurat.ui.components.ProgressiveBlurHeader
 import com.example.cinescopesurat.ui.navigation.Route
 import com.example.cinescopesurat.ui.navigation.bottomNavItems
 import com.example.cinescopesurat.ui.screens.SocialHubScreen
@@ -83,11 +87,37 @@ fun MainScreen() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
+    var scrollOffset by remember { mutableStateOf(0f) }
+
+    // Reset scroll on navigation
+    LaunchedEffect(currentDestination) {
+        scrollOffset = 0f
+    }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                scrollOffset = (scrollOffset + consumed.y).coerceIn(-200f, 0f)
+                return Offset.Zero
+            }
+        }
+    }
+
+    val blurIntensity = (-scrollOffset / 80f).coerceIn(0f, 1f)
+
     val showBottomBar = bottomNavItems.any { item ->
         currentDestination?.hasRoute(item.route::class) ?: false
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection)
+    ) {
         NavHost(
             navController = navController,
             startDestination = Route.Pulse,
@@ -129,6 +159,12 @@ fun MainScreen() {
                 PersonDetailsScreen(id = details.id, onBack = { navController.popBackStack() })
             }
         }
+        
+        // TOP PROGRESSIVE BLUR (Apple-style)
+        ProgressiveBlurHeader(
+            liquidState = liquidState,
+            intensity = blurIntensity
+        )
         
         AnimatedVisibility(
             visible = showBottomBar,
