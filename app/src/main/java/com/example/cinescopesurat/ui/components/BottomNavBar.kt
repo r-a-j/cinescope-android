@@ -68,10 +68,11 @@ fun BottomNavBar(
                 .liquid(liquidState) {
                     frost = 3.dp
                     refraction = 0.25f
-                    curve = 0.25f
+                    curve = 1.0f
                     edge = 0.0f
                     saturation = 1.4f
-                    dispersion = 0.08f
+                    dispersion = 0.40f
+                    contrast = 1.25f
                     tint = if (selectedIndex != -1) {
                         activeBrandColor.copy(alpha = 0.15f)
                     } else {
