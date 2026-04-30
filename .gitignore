@@ -26,6 +26,9 @@ captures/
 # Graphify
 graphify-out/
 
+# Agent
+.agent/
+
 # OS files
 .DS_Store
 Thumbs.db
