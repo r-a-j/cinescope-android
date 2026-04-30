@@ -6,6 +6,8 @@ build/
 # IDE files
 .idea/
 *.iml
+.kotlin/
+.claude/
 
 # Local configuration
 local.properties
@@ -23,11 +25,13 @@ captures/
 *.jks
 *.keystore
 
-# Graphify
+# Graphify (Auto-generated structure)
 graphify-out/
 
-# Agent
+# AI Agent Context (Local development only - do not commit to GitHub)
 .agent/
+AGENTS.md
+CLAUDE.md
 
 # OS files
 .DS_Store
