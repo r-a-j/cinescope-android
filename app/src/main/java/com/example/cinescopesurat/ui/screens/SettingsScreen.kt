@@ -37,12 +37,11 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .statusBarsPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 120.dp)
+                .padding(top = 160.dp, bottom = 120.dp) // Start behind the glass
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
+            // ... rest of the column ...
 
             // 2026 BOLD HEADER
             Text(

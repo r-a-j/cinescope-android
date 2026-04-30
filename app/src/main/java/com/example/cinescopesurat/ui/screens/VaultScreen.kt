@@ -28,10 +28,9 @@ fun VaultScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(24.dp)
-                .padding(bottom = 120.dp)
+                .padding(horizontal = 24.dp)
+                .padding(top = 140.dp, bottom = 120.dp)
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
             
             FitMyScheduleCard(
                 selectedVibe = uiState.selectedVibe,

@@ -88,11 +88,9 @@ fun SearchScreen(
                 } else {
                     LazyVerticalGrid(
                         columns = GridCells.Fixed(4),
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding(),
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
-                            top = 16.dp,
+                            top = 160.dp, // Content starts behind the header
                             start = 16.dp,
                             end = 16.dp,
                             bottom = 240.dp
@@ -247,9 +245,9 @@ fun SearchScreen(
                                 SleekGridResultCard(
                                     result = result,
                                     index = index,
-                                    onMovieClick = { id -> focusManager.clearFocus(); onMovieClick(id) },
-                                    onTvShowClick = { id -> focusManager.clearFocus(); onTvShowClick(id) },
-                                    onPersonClick = { id -> focusManager.clearFocus(); onPersonClick(id) }
+                                    onMovieClick = { id: Int -> focusManager.clearFocus(); onMovieClick(id) },
+                                    onTvShowClick = { id: Int -> focusManager.clearFocus(); onTvShowClick(id) },
+                                    onPersonClick = { id: Int -> focusManager.clearFocus(); onPersonClick(id) }
                                 )
                             }
                         }
@@ -284,9 +282,9 @@ fun SearchScreen(
                             ) { _, result ->
                                 CinematicCompactCard(
                                     result = result,
-                                    onMovieClick = { id -> focusManager.clearFocus(); onMovieClick(id) },
-                                    onTvShowClick = { id -> focusManager.clearFocus(); onTvShowClick(id) },
-                                    onPersonClick = { id -> focusManager.clearFocus(); onPersonClick(id) }
+                                    onMovieClick = { id: Int -> focusManager.clearFocus(); onMovieClick(id) },
+                                    onTvShowClick = { id: Int -> focusManager.clearFocus(); onTvShowClick(id) },
+                                    onPersonClick = { id: Int -> focusManager.clearFocus(); onPersonClick(id) }
                                 )
                             }
                         }

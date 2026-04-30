@@ -76,7 +76,7 @@ fun OracleScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(bottom = 120.dp),
+                        .padding(top = 160.dp, bottom = 120.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // ORACLE HERO - Oracle's Choice
