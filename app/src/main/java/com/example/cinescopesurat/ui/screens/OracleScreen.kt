@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -30,6 +31,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -39,6 +41,7 @@ import com.example.cinescopesurat.data.model.MediaItem
 import com.example.cinescopesurat.ui.components.SectionHeader
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.OracleViewModel
+import com.example.cinescopesurat.ui.viewmodel.OracleUiState
 import io.github.fletchmckee.liquid.LiquidState
 import io.github.fletchmckee.liquid.liquid
 import io.github.fletchmckee.liquid.rememberLiquidState
@@ -51,13 +54,28 @@ fun OracleScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    OracleScreenContent(
+        uiState = uiState,
+        liquidState = liquidState,
+        onMovieClick = onMovieClick,
+        onSpinAgain = { viewModel.spinAgain() }
+    )
+}
+
+@Composable
+fun OracleScreenContent(
+    uiState: OracleUiState,
+    liquidState: LiquidState,
+    onMovieClick: (Int) -> Unit,
+    onSpinAgain: () -> Unit
+) {
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
         if (uiState.error != null) {
-            OracleErrorState(message = uiState.error!!) {
-                viewModel.spinAgain()
+            OracleErrorState(message = uiState.error) {
+                onSpinAgain()
             }
         } else {
             Column(
@@ -93,7 +111,7 @@ fun OracleScreen(
                     currentRoll = uiState.currentRoll,
                     isSpinning = uiState.isSpinning,
                 ) {
-                    viewModel.spinAgain()
+                    onSpinAgain()
                 }
 
                 Spacer(modifier = Modifier.height(40.dp))
@@ -173,78 +191,91 @@ fun RitualProgressIndicator(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 20.dp),
+            .padding(horizontal = 32.dp, vertical = 24.dp), // Tighter padding to blend with card
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Ritual stages labels
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // Seamless thread line with nodes
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(24.dp),
+            contentAlignment = Alignment.Center
         ) {
-            repeat(3) { index ->
-                Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    val isCompleted = index < currentRoll
-                    val isActive = index == currentRoll
+            // The track background line
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            )
 
-                    val stageColor = when {
+            // The filled track line
+            Row(modifier = Modifier.fillMaxWidth()) {
+                val fillWeight by animateFloatAsState(
+                    targetValue = when (currentRoll) {
+                        0 -> 0.01f
+                        1 -> 0.5f
+                        else -> 1f
+                    },
+                    animationSpec = tween(800, easing = EaseInOutCubic),
+                    label = "trackFill"
+                )
+
+                if (fillWeight > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .weight(fillWeight)
+                            .height(2.dp)
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color(0xFF00BCD4),
+                                        if (isDestinyLocked) Color(0xFFFFD700) else Color(0xFF7C3AED)
+                                    )
+                                )
+                            )
+                            .shadow(if (currentRoll > 0) 8.dp else 0.dp, spotColor = Color(0xFF00BCD4))
+                    )
+                }
+                if (fillWeight < 1f) {
+                    Spacer(modifier = Modifier.weight(1f - fillWeight))
+                }
+            }
+
+            // The Nodes
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                repeat(3) { index ->
+                    val isActive = index == currentRoll
+                    val isCompleted = index < currentRoll
+
+                    val nodeColor = when {
                         isActive && isDestinyLocked -> Color(0xFFFFD700)
-                        isActive -> Color(0xFF00BCD4)
-                        isCompleted -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        isActive -> Color.White
+                        isCompleted -> Color(0xFF7C3AED)
+                        else -> MaterialTheme.colorScheme.surfaceVariant
                     }
 
-                    // Stage icon circle
-                    val scale by animateFloatAsState(
-                        targetValue = if (isActive) 1.2f else 1f,
-                        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
-                        label = "stageScale$index"
+                    val nodeSize by animateDpAsState(
+                        targetValue = if (isActive) 12.dp else 8.dp,
+                        animationSpec = spring(Spring.DampingRatioMediumBouncy),
+                        label = "nodeSize"
                     )
 
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                            }
+                            .size(nodeSize)
                             .clip(CircleShape)
-                            .background(stageColor.copy(alpha = 0.15f))
+                            .background(nodeColor)
                             .border(
-                                width = if (isActive) 2.5.dp else 1.5.dp,
-                                color = stageColor,
+                                width = if (isActive) 2.dp else 0.dp,
+                                color = if (isActive && !isDestinyLocked) Color(0xFF00BCD4) else Color.Transparent,
                                 shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            when (index) {
-                                0 -> Icons.Default.Visibility
-                                1 -> Icons.Default.AutoAwesome
-                                else -> Icons.Default.Star
-                            },
-                            contentDescription = null,
-                            tint = stageColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        when (index) {
-                            0 -> "First Vision"
-                            1 -> "Second Path"
-                            else -> "Final Revelation"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp,
-                        color = stageColor,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            .shadow(if (isActive || isCompleted) 12.dp else 0.dp, spotColor = nodeColor)
                     )
                 }
             }
@@ -252,75 +283,18 @@ fun RitualProgressIndicator(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Progress bar with connectors
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            repeat(3) { index ->
-                val isActive = index <= currentRoll
-                val isCurrentRoll = index == currentRoll
-                val glowColor = when {
-                    isCurrentRoll && isDestinyLocked -> Color(0xFFFFD700)
-                    isCurrentRoll -> Color(0xFF00BCD4)
-                    isActive -> MaterialTheme.colorScheme.primary
-                    else -> MaterialTheme.colorScheme.surfaceVariant
-                }
-
-                val width by animateFloatAsState(
-                    targetValue = if (isActive) 1f else 0.4f,
-                    animationSpec = tween(600, easing = EaseInOutCubic),
-                    label = "progressWidth$index"
-                )
-
-                Box(
-                    modifier = Modifier
-                        .weight(width)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(
-                            if (isActive) {
-                                Brush.linearGradient(
-                                    colors = listOf(
-                                        glowColor.copy(alpha = 0.4f),
-                                        glowColor
-                                    )
-                                )
-                            } else {
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        glowColor.copy(alpha = 0.3f),
-                                        glowColor.copy(alpha = 0.15f)
-                                    )
-                                )
-                            }
-                        )
-                        .shadow(
-                            elevation = if (isCurrentRoll) 8.dp else 0.dp,
-                            shape = RoundedCornerShape(4.dp)
-                        )
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Status text
+        // Clean, minimalist status text
         Text(
             text = when {
-                isDestinyLocked -> "✦ DESTINY SEALED ✦"
-                currentRoll == 0 -> "Awaiting first revelation..."
-                currentRoll == 1 -> "Path converges..."
-                else -> "Fate crystallizes..."
-            },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.8.sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                isDestinyLocked -> "FATE CRYSTALLIZED"
+                currentRoll == 0 -> "Awaiting first revelation"
+                currentRoll == 1 -> "Path converges"
+                else -> "Final threshold"
+            }.uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isDestinyLocked) Color(0xFFFFD700) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp
         )
     }
 }
@@ -429,10 +403,8 @@ fun OracleHeroSection(
     onMovieClick: (Int) -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
+    val infiniteTransition = rememberInfiniteTransition(label = "oracleHeroAnimations")
 
-    // 1. RESTORED: Needed for the white shimmer sweep over the card
-    val infiniteTransition = rememberInfiniteTransition(label = "oracleShimmer")
     val spinPhase by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -443,19 +415,16 @@ fun OracleHeroSection(
         label = "spinPhase"
     )
 
-    // 2. The Breathing Scale
-    val scale by animateFloatAsState(
-        targetValue = when {
-            isPressed -> 0.96f
-            isSpinning -> 0.92f
-            isDestinyLocked -> 1.02f
-            else -> 1f
-        },
-        animationSpec = tween(1200, easing = EaseInOutCubic),
-        label = "heroScale"
+    val edgeOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 2000f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "edgeOffset"
     )
 
-    // 3. The Deep Blur
     val visionBlur by animateDpAsState(
         targetValue = if (isSpinning) 24.dp else 0.dp,
         animationSpec = tween(
@@ -465,32 +434,33 @@ fun OracleHeroSection(
         label = "visionBlur"
     )
 
-    // 4. Destiny Glow
     val destinyGlowAlpha by animateFloatAsState(
-        targetValue = if (isDestinyLocked) 0.8f else 0f,
-        animationSpec = tween(800),
+        targetValue = if (isDestinyLocked) 1f else 0f,
+        animationSpec = tween(1200, easing = EaseInOutCubic),
         label = "destinyGlow"
     )
 
+    // THE MASTER CONTAINER
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(500.dp)
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
+            .height(520.dp)
+            .clip(RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 32.dp, bottomEnd = 32.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 enabled = !isDestinyLocked || !isSpinning
-            ) { onMovieClick(movie.id) }
+            ) { onMovieClick(movie.id) },
+        contentAlignment = Alignment.Center
     ) {
-        // 5. FIXED: Crossfade with fully qualified R references (Removed the duplicate AsyncImage)
+        // --- THICK YELLOW AURA REMOVED ENTIRELY ---
+
+        // The Main Movie Image
         Crossfade(
             targetState = movie,
             animationSpec = tween(1000),
-            label = "movieCrossfade"
+            label = "movieCrossfade",
+            modifier = Modifier.fillMaxSize()
         ) { currentMovie ->
             AsyncImage(
                 model = currentMovie.backdropUrl ?: com.example.cinescopesurat.R.drawable.placeholder_backdrop,
@@ -499,26 +469,24 @@ fun OracleHeroSection(
                     .fillMaxSize()
                     .blur(visionBlur),
                 contentScale = ContentScale.Crop,
-                placeholder = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop),
-                error = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop),
                 colorFilter = if (isSpinning) ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.3f) }) else null
             )
         }
 
-        // Dynamic cinematic gradient overlay
+        // Seamless Fade Gradient (Melts the bottom into your app background)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         0.0f to Color.Transparent,
-                        0.5f to MaterialTheme.colorScheme.background.copy(alpha = 0.4f),
-                        1.0f to MaterialTheme.colorScheme.background
+                        0.5f to MaterialTheme.colorScheme.background.copy(alpha = 0.3f),
+                        1.0f to MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
                     )
                 )
         )
 
-        // Spin shimmer effect overlay
+        // Spin shimmer effect
         if (isSpinning) {
             Box(
                 modifier = Modifier
@@ -526,72 +494,73 @@ fun OracleHeroSection(
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                Color.White.copy(alpha = 0f),
+                                Color.Transparent,
                                 Color.White.copy(alpha = 0.15f),
-                                Color.White.copy(alpha = 0f)
+                                Color.Transparent
                             ),
-                            start = androidx.compose.ui.geometry.Offset(
-                                x = (spinPhase * 1000f),
-                                y = 0f
-                            ),
-                            end = androidx.compose.ui.geometry.Offset(
-                                x = (spinPhase * 1000f) + 500f,
-                                y = 500f
-                            )
+                            start = androidx.compose.ui.geometry.Offset(x = (spinPhase * 1000f), y = 0f),
+                            end = androidx.compose.ui.geometry.Offset(x = (spinPhase * 1000f) + 500f, y = 500f)
                         )
                     )
             )
         }
 
-        // Destiny Locked glow effect
+        // The Sleek Animated Golden Ring (With Top-Half Dissolve Mask)
         if (isDestinyLocked) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer {
+                        // Forces Compose to render this specific box into an offscreen buffer
+                        // so we can apply the erasure mask cleanly.
+                        alpha = 0.99f
+                    }
+                    .drawWithContent {
+                        drawContent() // 1. Draws the border first
+
+                        // 2. Draws the erasure mask over it
+                        drawRect(
+                            brush = Brush.verticalGradient(
+                                0.0f to Color.Transparent, // Top is completely erased
+                                0.5f to Color.Transparent, // Stays erased until exactly 50%
+                                0.7f to Color.Black,       // Smoothly fades into existence
+                                1.0f to Color.Black        // Bottom is fully visible
+                            ),
+                            blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
+                        )
+                    }
                     .border(
-                        width = 3.dp,
-                        color = Color(0xFFFFD700).copy(alpha = destinyGlowAlpha * 0.6f),
-                        shape = RoundedCornerShape(24.dp)
-                    )
-                    .blur(12.dp)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .border(
-                        width = 1.dp,
-                        color = Color(0xFFFFD700).copy(alpha = destinyGlowAlpha),
-                        shape = RoundedCornerShape(24.dp)
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.radialGradient(
+                        width = 1.5.dp,
+                        brush = Brush.linearGradient(
                             colors = listOf(
-                                Color(0xFFFFD700).copy(alpha = destinyGlowAlpha * 0.1f),
+                                Color.Transparent,
+                                Color(0xFFFFD700).copy(alpha = destinyGlowAlpha * 0.4f),
+                                Color.White.copy(alpha = destinyGlowAlpha),
+                                Color(0xFFFFD700).copy(alpha = destinyGlowAlpha * 0.4f),
                                 Color.Transparent
                             ),
-                            radius = 600f
-                        )
+                            start = androidx.compose.ui.geometry.Offset(edgeOffset - 800f, edgeOffset - 800f),
+                            end = androidx.compose.ui.geometry.Offset(edgeOffset, edgeOffset)
+                        ),
+                        // Match the bottom-only rounded corners from earlier
+                        shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 32.dp, bottomEnd = 32.dp)
                     )
             )
         }
 
-        // Glass Frosted Card
+        // Glass Frosted Card Content
         val glassColor = CinescopeTheme.customColors.glassBackground
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(16.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(glassColor.copy(alpha = 0.06f))
-                .blur(12.dp)
+                .background(glassColor.copy(alpha = 0.03f))
+                .blur(16.dp)
                 .liquid(liquidState) {
                     frost = 5.dp
-                    tint = glassColor.copy(alpha = 0.08f)
+                    tint = glassColor.copy(alpha = 0.05f)
                 }
         )
 
@@ -599,48 +568,73 @@ fun OracleHeroSection(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
-                .padding(20.dp)
+                .padding(32.dp)
         ) {
-            Text(
-                when {
-                    isDestinyLocked -> "✦ YOUR FATE IS SEALED ✦"
-                    currentRoll == 0 -> "ORACLE FIRST VISION"
-                    currentRoll == 1 -> "ORACLE SECOND PATH"
-                    else -> "ORACLE FINAL REVELATION"
-                },
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Black,
-                color = when {
-                    isDestinyLocked -> Color(0xFFFFD700)
-                    currentRoll == 0 -> Color(0xFF00BCD4)
-                    currentRoll == 1 -> Color(0xFF7C3AED)
-                    else -> MaterialTheme.colorScheme.primary
-                },
-                letterSpacing = 2.sp
-            )
+            if (isDestinyLocked) {
+                val goldGradient = Brush.linearGradient(
+                    colors = listOf(Color(0xFFFFDF73), Color(0xFFFFF8DC), Color(0xFFD4AF37))
+                )
 
-            Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "✦ YOUR FATE IS SEALED ✦",
+                    style = androidx.compose.ui.text.TextStyle(
+                        brush = goldGradient,
+                        shadow = androidx.compose.ui.graphics.Shadow(
+                            color = Color(0xFFFFD700).copy(alpha = 0.2f),
+                            blurRadius = 8f
+                        )
+                    ),
+                    fontWeight = FontWeight.Black,
+                    fontSize = 11.sp,
+                    letterSpacing = 6.sp,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                )
+            } else {
+                Text(
+                    when (currentRoll) {
+                        0 -> "ORACLE FIRST VISION"
+                        1 -> "ORACLE SECOND PATH"
+                        else -> "ORACLE FINAL REVELATION"
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = when (currentRoll) {
+                        0 -> Color(0xFF00BCD4).copy(alpha = 0.8f)
+                        1 -> Color(0xFF7C3AED).copy(alpha = 0.8f)
+                        else -> MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                    },
+                    letterSpacing = 3.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+            }
 
             Text(
                 movie.title,
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Black,
-                letterSpacing = (-1.5).sp,
+                letterSpacing = (-1).sp,
                 lineHeight = 40.sp,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 2
+                color = Color.White,
+                maxLines = 2,
+                textAlign = if (isDestinyLocked) androidx.compose.ui.text.style.TextAlign.Center else androidx.compose.ui.text.style.TextAlign.Start,
+                modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = if (isDestinyLocked) Arrangement.Center else Arrangement.Start,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Surface(
                     shape = RoundedCornerShape(50.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    shadowElevation = 8.dp
+                    color = Color.Black.copy(alpha = 0.4f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isDestinyLocked) Color(0xFFFFD700).copy(alpha = 0.5f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                    )
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -650,28 +644,16 @@ fun OracleHeroSection(
                         Icon(
                             Icons.Default.Star,
                             contentDescription = null,
-                            tint = Color(0xFFFFD700),
+                            tint = if (isDestinyLocked) Color(0xFFFFD700) else MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
                             movie.rating,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Black
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
                         )
                     }
-                }
-
-                AnimatedVisibility(
-                    visible = !isDestinyLocked,
-                    enter = fadeIn() + slideInHorizontally(),
-                    exit = fadeOut() + slideOutHorizontally()
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
                 }
             }
         }
@@ -1065,6 +1047,23 @@ fun SpinAgainSection(
             fontWeight = FontWeight.SemiBold,
             fontSize = 12.sp,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MyScreenPreview() {
+    CinescopeTheme {
+        OracleScreenContent(
+            uiState = OracleUiState(
+                oraclesChoice = MediaItem(1, "Inception", "8.8"),
+                prophecies = listOf("Action" to 5, "Sci-Fi" to 3),
+                vibeInsights = listOf("Mind-bending", "Thrilling")
+            ),
+            liquidState = rememberLiquidState(),
+            onMovieClick = {},
+            onSpinAgain = {}
         )
     }
 }
