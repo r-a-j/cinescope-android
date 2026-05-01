@@ -4,6 +4,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -52,68 +53,71 @@ fun OracleScreen(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        AnimatedContent(
-            targetState = uiState.isLoading || uiState.isSpinning,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(500)) togetherWith
-                        fadeOut(animationSpec = tween(500))
-            },
-            label = "oracleStateTransition"
-        ) { isDisplayingLoading ->
-            if (isDisplayingLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    OracleLoadingAnimation(uiState.randomThought)
-                }
-            } else if (uiState.error != null) {
-                OracleErrorState(
-                    message = uiState.error!!,
-                    onRetry = { viewModel.spinAgain() }
-                )
-            } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(top = 0.dp, bottom = 120.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // ORACLE HERO - Oracle's Choice
-                    uiState.oraclesChoice?.let { movie ->
-                        OracleHeroSection(
-                            movie = movie,
-                            liquidState = liquidState,
-                            onMovieClick = onMovieClick
-                        )
-                    }
-
-                    // SPIN AGAIN BUTTON & LIMIT
-                    Spacer(modifier = Modifier.height(24.dp))
-                    SpinAgainSection(
-                        spinsLeft = uiState.spinsLeft,
-                        onSpin = { viewModel.spinAgain() }
+        if (uiState.error != null) {
+            OracleErrorState(
+                message = uiState.error!!,
+                onRetry = { viewModel.spinAgain() }
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 0.dp, bottom = 120.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // ORACLE HERO - Oracle's Choice with in-place spinning animation
+                uiState.oraclesChoice?.let { movie ->
+                    OracleHeroSection(
+                        movie = movie,
+                        isSpinning = uiState.isSpinning,
+                        currentRoll = uiState.currentRoll,
+                        isDestinyLocked = uiState.isDestinyLocked,
+                        liquidState = liquidState,
+                        onMovieClick = onMovieClick
                     )
-
-                    Spacer(modifier = Modifier.height(40.dp))
-
-                    // PROPHECIES - Genre Tiles
-                    if (uiState.prophecies.isNotEmpty()) {
-                        SectionHeader("PROPHECIES", "THE ORACLE'S WISDOM")
-                        PropheciesBentoGrid(uiState.prophecies)
-                    }
-
-                    Spacer(modifier = Modifier.height(40.dp))
-
-                    // VIBE INSIGHTS
-                    if (uiState.vibeInsights.isNotEmpty()) {
-                        SectionHeader("VIBE CHECK", "TODAY'S INSIGHTS")
-                        VibeInsightsSection(uiState.vibeInsights)
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
                 }
+
+                // RITUAL PROGRESS INDICATOR
+                RitualProgressIndicator(
+                    currentRoll = uiState.currentRoll,
+                    isDestinyLocked = uiState.isDestinyLocked
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // SPIN AGAIN BUTTON & LIMIT
+                SpinAgainSection(
+                    isDestinyLocked = uiState.isDestinyLocked,
+                    currentRoll = uiState.currentRoll,
+                    isSpinning = uiState.isSpinning,
+                    onSpin = { viewModel.spinAgain() }
+                )
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // PROPHECIES - Genre Tiles
+                if (uiState.prophecies.isNotEmpty()) {
+                    SectionHeader("PROPHECIES", "THE ORACLE'S WISDOM")
+                    PropheciesBentoGrid(uiState.prophecies)
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
+
+                // VIBE INSIGHTS
+                if (uiState.vibeInsights.isNotEmpty()) {
+                    SectionHeader("VIBE CHECK", "TODAY'S INSIGHTS")
+                    VibeInsightsSection(uiState.vibeInsights)
+                }
+
+                // ROLL HISTORY - Previous rolls displayed as subdued tiles
+                if (uiState.rollHistory.size > 1) {
+                    Spacer(modifier = Modifier.height(40.dp))
+                    SectionHeader("HISTORIC VISIONS", "YOUR PAST ROLLS")
+                    RollHistoryGrid(uiState.rollHistory.dropLast(1), onMovieClick = onMovieClick)
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
             }
         }
     }
@@ -136,7 +140,7 @@ fun OracleErrorState(message: String, onRetry: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            "THE VOID WHISPERS...",
+            "DESTINY OBSCURED",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.error,
             fontWeight = FontWeight.Black,
@@ -160,77 +164,195 @@ fun OracleErrorState(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-fun OracleLoadingAnimation(thought: String) {
-    val infiniteTransition = rememberInfiniteTransition(label = "oracleGlow")
-    val glowAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.8f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "glowAlpha"
-    )
-
+fun RitualProgressIndicator(
+    currentRoll: Int,
+    isDestinyLocked: Boolean
+) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(40.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(100.dp)
-                .clip(RoundedCornerShape(32.dp))
-                .background(
-                    MaterialTheme.colorScheme.primary.copy(alpha = glowAlpha)
-                )
-                .blur(20.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth()
+                .height(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                Icons.Default.AutoAwesome,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(64.dp)
-            )
+            repeat(3) { index ->
+                val isActive = index <= currentRoll
+                val isCurrentRoll = index == currentRoll
+                val glowColor = when {
+                    isCurrentRoll && isDestinyLocked -> Color(0xFFFFD700) // Gold when locked
+                    isCurrentRoll -> Color(0xFF00BCD4) // Cyan for active
+                    isActive -> MaterialTheme.colorScheme.primary // Primary for completed
+                    else -> MaterialTheme.colorScheme.surfaceVariant // Grey for pending
+                }
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(glowColor.copy(alpha = 0.3f))
+                        .border(
+                            width = if (isCurrentRoll) 1.5.dp else 1.dp,
+                            color = glowColor,
+                            shape = RoundedCornerShape(6.dp)
+                        )
+                )
+            }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            thought,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Black,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            color = MaterialTheme.colorScheme.onBackground,
+            text = when {
+                isDestinyLocked -> "Destiny Sealed"
+                currentRoll == 0 -> "First Vision"
+                currentRoll == 1 -> "Second Path"
+                else -> "Final Revelation"
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+            fontWeight = FontWeight.SemiBold,
             letterSpacing = 1.sp
         )
+    }
+}
 
-        Spacer(modifier = Modifier.height(16.dp))
+@Composable
+fun RollHistoryGrid(
+    history: List<MediaItem>,
+    onMovieClick: (Int) -> Unit = {}
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        history.forEach { movie ->
+            HistoryMovieTile(movie = movie, onMovieClick = onMovieClick)
+        }
+    }
+}
 
-        Text(
-            "⋯ ⋯ ⋯",
-            style = MaterialTheme.typography.displayMedium,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-            letterSpacing = 6.sp
+@Composable
+fun HistoryMovieTile(
+    movie: MediaItem,
+    onMovieClick: (Int) -> Unit = {}
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "historyScale"
+    )
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onMovieClick(movie.id) },
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
         )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AsyncImage(
+                model = movie.posterUrl ?: com.example.cinescopesurat.R.drawable.placeholder_backdrop,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop),
+                error = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop)
+            )
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    movie.title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                Text(
+                    "A vision from your past",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 
 @Composable
 fun OracleHeroSection(
     movie: MediaItem,
+    isSpinning: Boolean = false,
+    currentRoll: Int = 0,
+    isDestinyLocked: Boolean = false,
     liquidState: LiquidState,
     onMovieClick: (Int) -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+
+    // In-place liquid morphing spin animation
+    val infiniteTransition = rememberInfiniteTransition(label = "oracleSpinMorph")
+    val spinRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1200, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "heroRotation"
+    )
+
+    val actualRotationZ = if (isSpinning) spinRotation else 0f
+
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.98f else 1f,
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
         label = "oracleHeroScale"
+    )
+
+    val destinyGlowAlpha by animateFloatAsState(
+        targetValue = if (isDestinyLocked) 0.8f else 0f,
+        animationSpec = tween(600),
+        label = "destinyGlow"
     )
 
     Box(
@@ -240,10 +362,12 @@ fun OracleHeroSection(
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
+                rotationZ = actualRotationZ
             }
             .clickable(
                 interactionSource = interactionSource,
-                indication = null
+                indication = null,
+                enabled = !isDestinyLocked
             ) { onMovieClick(movie.id) }
     ) {
         // Backdrop
@@ -268,6 +392,30 @@ fun OracleHeroSection(
                     )
                 )
         )
+
+        // Destiny Locked Glow Border (only visible when locked)
+        if (isDestinyLocked) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(
+                        width = 2.dp,
+                        color = Color(0xFFFFD700).copy(alpha = destinyGlowAlpha),
+                        shape = RoundedCornerShape(32.dp)
+                    )
+                    .blur(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "✦ DESTINY LOCKED ✦",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFFFFD700).copy(alpha = destinyGlowAlpha * 0.8f),
+                    letterSpacing = 2.sp,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 24.dp)
+                )
+            }
+        }
 
         // Glass Frosted Card with Oracle Styling
         val glassColor = CinescopeTheme.customColors.glassBackground
@@ -549,39 +697,76 @@ fun VibeInsightCard(insight: String) {
 
 
 @Composable
-fun SpinAgainSection(spinsLeft: Int, onSpin: () -> Unit) {
-    val enabled = spinsLeft > 0
+fun SpinAgainSection(
+    isDestinyLocked: Boolean,
+    currentRoll: Int,
+    isSpinning: Boolean,
+    onSpin: () -> Unit
+) {
+    val enabled = !isDestinyLocked
+    val buttonText = when {
+        isDestinyLocked -> "DESTINY SEALED"
+        currentRoll >= 2 -> "FINAL REVELATION"
+        else -> "SPIN FOR DESTINY (${3 - currentRoll} left)"
+    }
+
+    val chargeAlpha by animateFloatAsState(
+        targetValue = if (isSpinning) 0.6f else 0.2f,
+        animationSpec = tween(1000),
+        label = "chargeAlpha"
+    )
+
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Button(
-            onClick = onSpin,
-            enabled = enabled,
-            shape = RoundedCornerShape(32.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFFFB300),
-                contentColor = Color.Black,
-                disabledContainerColor = Color(0xFFFFB300).copy(alpha = 0.15f),
-                disabledContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f)
-            ),
+        Box(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
                 .height(60.dp)
+                .clip(RoundedCornerShape(32.dp))
+                .background(Color(0xFFFFB300).copy(alpha = if (enabled) 1f else 0.15f))
+                .border(
+                    width = 2.dp,
+                    color = if (isDestinyLocked) Color(0xFFFFD700) else Color(0xFFFFB300),
+                    shape = RoundedCornerShape(32.dp)
+                )
                 .shadow(if (enabled) 12.dp else 0.dp, RoundedCornerShape(32.dp))
+                .clickable(enabled = enabled) { onSpin() }
+                .padding(4.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                if (enabled) Icons.Default.Casino else Icons.Default.LockClock, 
-                contentDescription = null
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            val buttonText = if (enabled) {
-                "Spin Again ($spinsLeft left)"
-            } else {
-                "Out of Wisdom for Tonight"
+            // Charge-up background
+            if (isSpinning) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(Color(0xFFFFD700).copy(alpha = chargeAlpha))
+                )
             }
-            Text(buttonText, fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
+                Icon(
+                    if (enabled && !isDestinyLocked) Icons.Default.Casino else Icons.Default.LockClock,
+                    contentDescription = null,
+                    tint = if (enabled) Color.Black else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                    modifier = Modifier.size(24.dp)
+                )
+                Text(
+                    buttonText,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 0.5.sp,
+                    color = if (enabled) Color.Black else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
+                    fontSize = 14.sp
+                )
+            }
         }
+
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            if (enabled) "The Oracle grants 3 spins per night." else "Return when the stars align (tomorrow).",
+            if (isDestinyLocked) "Your fate is sealed. Return tomorrow for new visions." else "The Oracle grants 3 spins per night.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
             fontWeight = FontWeight.Medium

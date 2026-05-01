@@ -14,6 +14,9 @@ class MediaRepository @Inject constructor() {
     private val basePosterPath = "https://image.tmdb.org/t/p/w500"
     private val baseBackdropPath = "https://image.tmdb.org/t/p/w780"
 
+    // Vault storage (saved/favorited movies)
+    private val savedVaultMovies = mutableListOf<MediaItem>()
+
     private val sampleMovies = listOf(
         MediaItem(1, "The Dark Knight", "9.0", posterUrl = "$basePosterPath/qJ2tW6WMUDux911r6m7haRef0WH.jpg", backdropUrl = "$baseBackdropPath/dqK9Hag1054tghRQSqLSfrkvQnA.jpg", type = "Movie"),
         MediaItem(2, "Inception", "8.8", posterUrl = "$basePosterPath/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg", backdropUrl = "$baseBackdropPath/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg", type = "Movie"),
@@ -100,4 +103,20 @@ class MediaRepository @Inject constructor() {
     fun getPersonById(id: Int): Flow<Person?> = flow {
         emit(samplePeople.find { it.id == id })
     }
+
+    fun getVaultMovies(): Flow<List<MediaItem>> = flow {
+        emit(savedVaultMovies.toList())
+    }
+
+    fun addToVault(movie: MediaItem) {
+        if (!savedVaultMovies.any { it.id == movie.id }) {
+            savedVaultMovies.add(movie)
+        }
+    }
+
+    fun removeFromVault(movieId: Int) {
+        savedVaultMovies.removeAll { it.id == movieId }
+    }
+
+    fun isInVault(movieId: Int): Boolean = savedVaultMovies.any { it.id == movieId }
 }
