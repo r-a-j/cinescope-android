@@ -167,8 +167,7 @@ fun MainScreen() {
         ) {
             composable<Route.Pulse> { 
                 PulseScreen(
-                    onMovieClick = { id -> navController.navigate(Route.MovieDetails(id)) },
-                    liquidState = liquidState
+                    onMovieClick = { id -> navController.navigate(Route.MovieDetails(id)) }
                 )
             }
             composable<Route.Oracle> {

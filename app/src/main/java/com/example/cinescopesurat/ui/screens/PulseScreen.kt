@@ -35,17 +35,12 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cinescopesurat.data.model.MediaItem
 import com.example.cinescopesurat.ui.components.SectionHeader
-import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.PulseViewModel
-import io.github.fletchmckee.liquid.LiquidState
-import io.github.fletchmckee.liquid.liquid
-import io.github.fletchmckee.liquid.rememberLiquidState
 
 @Composable
 fun PulseScreen(
     onMovieClick: (Int) -> Unit = {},
-    viewModel: PulseViewModel = hiltViewModel(),
-    liquidState: LiquidState = rememberLiquidState()
+    viewModel: PulseViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val sampleMovies = uiState.trendingMovies
@@ -58,11 +53,11 @@ fun PulseScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(top = 0.dp, bottom = 120.dp) // Seamless start behind the glass
+                .padding(bottom = 120.dp) // Seamless start behind the glass
         ) {
             // CINEMATIC HERO
             if (sampleMovies.isNotEmpty()) {
-                HeroSpotlight(sampleMovies.first(), liquidState, onMovieClick)
+                HeroSpotlight(sampleMovies.first(), onMovieClick)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -103,7 +98,6 @@ fun PulseScreen(
 @Composable
 fun HeroSpotlight(
     movie: MediaItem,
-    liquidState: LiquidState,
     onClick: (Int) -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -117,7 +111,7 @@ fun HeroSpotlight(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(580.dp)
+            .height(340.dp) // Taller, more immersive hero section
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -134,107 +128,107 @@ fun HeroSpotlight(
             contentScale = ContentScale.Crop
         )
 
-        // Cinematic Gradient Overlay
+        // Cinematic Multi-Stage Gradient Overlay
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        0.3f to Color.Transparent,
-                        0.7f to MaterialTheme.colorScheme.background.copy(alpha = 0.4f),
+                        0.0f to Color.Black.copy(alpha = 0.3f), // Subtle dim at the top for header readability
+                        0.4f to Color.Transparent,
+                        0.7f to MaterialTheme.colorScheme.background.copy(alpha = 0.5f),
                         1.0f to MaterialTheme.colorScheme.background
                     )
                 )
         )
 
-        // GLASS FROSTED CARD
-        val glassColor = CinescopeTheme.customColors.glassBackground
-        Box(
+        // CONTENT SECTION
+        Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(24.dp)
+                .padding(horizontal = 24.dp, vertical = 40.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(32.dp))
-                .liquid(liquidState) {
-                    frost = 8.dp
-                    refraction = 0.15f
-                    curve = 0.1f
-                    tint = glassColor.copy(alpha = 0.15f)
-                }
-                .padding(24.dp)
         ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            "FEATURED",
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
+            // METADATA TAGS
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    color = MaterialTheme.colorScheme.primary,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        "FEATURED",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Icon(
+                    Icons.Default.Star,
+                    contentDescription = null,
+                    tint = Color(0xFFFFD700), // Gold
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    "IMDb ${movie.rating}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    fontWeight = FontWeight.Black
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // TITLE
+            Text(
+                text = movie.title.uppercase(),
+                style = MaterialTheme.typography.displayMedium,
+                fontWeight = FontWeight.Black,
+                letterSpacing = (-1.5).sp,
+                lineHeight = 48.sp,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(28.dp))
+
+            // ACTIONS
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Button(
+                    onClick = { },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White,
+                        contentColor = Color.Black
+                    ),
+                    contentPadding = PaddingValues(horizontal = 32.dp, vertical = 18.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("WATCH TRAILER", fontWeight = FontWeight.Black, letterSpacing = 0.5.sp)
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                IconButton(
+                    onClick = { },
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f))
+                ) {
                     Icon(
                         Icons.Default.Star,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.size(16.dp)
+                        contentDescription = "Favorite",
+                        tint = Color.White
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        "IMDb ${movie.rating}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = movie.title.uppercase(),
-                    style = MaterialTheme.typography.displayMedium,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-1.5).sp,
-                    lineHeight = 46.sp,
-                    color = MaterialTheme.colorScheme.onBackground
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Button(
-                        onClick = { },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-                    ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("WATCH TRAILER", fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    IconButton(
-                        onClick = { },
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-                    ) {
-                        Icon(
-                            Icons.Default.Star,
-                            contentDescription = "Favorite",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
                 }
             }
         }
