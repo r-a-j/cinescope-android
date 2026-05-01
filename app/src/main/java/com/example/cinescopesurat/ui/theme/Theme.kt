@@ -1,7 +1,6 @@
 package com.example.cinescopesurat.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -23,7 +22,7 @@ import com.example.cinescopesurat.data.AppTheme
 @Immutable
 data class CinescopeCustomColors(
     val glassBackground: Color = Color.Unspecified,
-    val glassHighlight: Color = Color.Unspecified
+    val glassHighlight: Color = Color.Unspecified,
 )
 
 val LocalCinescopeCustomColors = staticCompositionLocalOf { CinescopeCustomColors() }
@@ -74,7 +73,7 @@ fun CinescopeTheme(
     }
 
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        dynamicColor -> {
             val context = LocalContext.current
             val dynamicScheme = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
             dynamicScheme.copy(

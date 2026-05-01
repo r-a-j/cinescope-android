@@ -14,7 +14,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ThemeViewModel @Inject constructor(
-    private val themePreferences: ThemePreferences
+    private val themePreferences: ThemePreferences,
 ) : ViewModel() {
 
     val themeState: StateFlow<AppTheme> = themePreferences.themeFlow

@@ -23,7 +23,7 @@ data class OracleUiState(
     // Oracle Ritual Upgrade: New fields
     val currentRoll: Int = 0, // 0, 1, 2 - tracks sequence progression
     val rollHistory: List<MediaItem> = emptyList(), // Previous rolls in this session
-    val isDestinyLocked: Boolean = false // True when 3rd roll is complete
+    val isDestinyLocked: Boolean = false, // True when 3rd roll is complete
 )
 
 @HiltViewModel

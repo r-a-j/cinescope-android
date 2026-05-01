@@ -32,7 +32,7 @@ data class BottomNavItem(
     val route: Any,
     val title: String,
     val icon: ImageVector,
-    val glowColor: Color
+    val glowColor: Color,
 )
 
 val bottomNavItems = listOf(

@@ -13,12 +13,12 @@ import javax.inject.Inject
 
 data class PulseUiState(
     val trendingMovies: List<MediaItem> = emptyList(),
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
 )
 
 @HiltViewModel
 class PulseViewModel @Inject constructor(
-    private val repository: MediaRepository
+    repository: MediaRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<PulseUiState> = repository.getTrendingMovies()
