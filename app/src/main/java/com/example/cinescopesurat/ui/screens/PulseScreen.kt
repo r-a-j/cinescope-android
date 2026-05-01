@@ -49,7 +49,7 @@ fun PulseScreen(
     liquidState: LiquidState = rememberLiquidState()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val sampleMovies = uiState.trendingMovies
+    val sampleMovies = remember(uiState.trendingMovies) { uiState.trendingMovies }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -74,8 +74,14 @@ fun PulseScreen(
                 contentPadding = PaddingValues(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(sampleMovies) { movie ->
-                    PulseMovieCard(movie) { onMovieClick(movie.id) }
+                items(
+                    items = sampleMovies,
+                    key = { it.id }, // Critical for scroll performance
+                    contentType = { "movie_card" } // Helps in view pool recycling
+                ) { movie ->
+                    // Optimization: Remember the click lambda to prevent unnecessary PulseMovieCard recomposition
+                    val onClick = remember(movie.id) { { onMovieClick(movie.id) } }
+                    PulseMovieCard(movie = movie, onClick = onClick)
                 }
             }
 
@@ -93,8 +99,13 @@ fun PulseScreen(
                 contentPadding = PaddingValues(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(sampleMovies.reversed()) { movie ->
-                    PulseMovieCard(movie, small = true) { onMovieClick(movie.id) }
+                items(
+                    items = sampleMovies.reversed(),
+                    key = { "recent_${it.id}" },
+                    contentType = { "movie_card_small" }
+                ) { movie ->
+                    val onClick = remember(movie.id) { { onMovieClick(movie.id) } }
+                    PulseMovieCard(movie, small = true, onClick = onClick)
                 }
             }
         }
@@ -251,7 +262,7 @@ fun PulseMovieCard(movie: MediaItem, small: Boolean = false, onClick: () -> Unit
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        animationSpec = spring(Spring.DampingRatioLowBouncy, Spring.StiffnessVeryLow),
         label = "cardScale"
     )
 
@@ -267,8 +278,9 @@ fun PulseMovieCard(movie: MediaItem, small: Boolean = false, onClick: () -> Unit
             }
             .clickable(
                 interactionSource = interactionSource,
-                indication = null
-            ) { onClick() }
+                indication = null,
+                onClick = onClick
+            )
     ) {
         Box(
             modifier = Modifier
