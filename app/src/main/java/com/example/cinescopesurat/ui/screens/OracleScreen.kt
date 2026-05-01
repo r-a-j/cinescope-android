@@ -24,6 +24,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -429,8 +431,8 @@ fun OracleHeroSection(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Professional-grade spin animation with phases
-    val infiniteTransition = rememberInfiniteTransition(label = "oracleSpinMorph")
+    // 1. RESTORED: Needed for the white shimmer sweep over the card
+    val infiniteTransition = rememberInfiniteTransition(label = "oracleShimmer")
     val spinPhase by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
@@ -441,32 +443,29 @@ fun OracleHeroSection(
         label = "spinPhase"
     )
 
-    // Multi-axis rotation for 3D flip effect
-    val spinRotationZ = if (isSpinning) (spinPhase * 720f) % 360f else 0f
-    val spinRotationX = if (isSpinning) {
-        val sin = kotlin.math.sin(spinPhase * kotlin.math.PI * 2) * 20
-        sin.toFloat()
-    } else 0f
-
-    // Scale pulse effect during spin
-    val spinScale by animateFloatAsState(
-        targetValue = if (isSpinning) 0.85f else 1f,
-        animationSpec = tween(300, easing = EaseInOutCubic),
-        label = "spinScale"
+    // 2. The Breathing Scale
+    val scale by animateFloatAsState(
+        targetValue = when {
+            isPressed -> 0.96f
+            isSpinning -> 0.92f
+            isDestinyLocked -> 1.02f
+            else -> 1f
+        },
+        animationSpec = tween(1200, easing = EaseInOutCubic),
+        label = "heroScale"
     )
 
-    val pressScale by animateFloatAsState(
-        targetValue = if (isPressed) 0.96f else 1f,
-        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
-        label = "pressScale"
+    // 3. The Deep Blur
+    val visionBlur by animateDpAsState(
+        targetValue = if (isSpinning) 24.dp else 0.dp,
+        animationSpec = tween(
+            durationMillis = if (isSpinning) 800 else 1200,
+            easing = FastOutSlowInEasing
+        ),
+        label = "visionBlur"
     )
 
-    val alphaShift by animateFloatAsState(
-        targetValue = if (isSpinning) 0.7f else 1f,
-        animationSpec = tween(400, easing = EaseInOutCubic),
-        label = "alphaShift"
-    )
-
+    // 4. Destiny Glow
     val destinyGlowAlpha by animateFloatAsState(
         targetValue = if (isDestinyLocked) 0.8f else 0f,
         animationSpec = tween(800),
@@ -478,12 +477,8 @@ fun OracleHeroSection(
             .fillMaxWidth()
             .height(500.dp)
             .graphicsLayer {
-                scaleX = spinScale * pressScale
-                scaleY = spinScale * pressScale
-                rotationZ = spinRotationZ
-                rotationX = spinRotationX
-                alpha = alphaShift
-                cameraDistance = 12f * density
+                scaleX = scale
+                scaleY = scale
             }
             .clickable(
                 interactionSource = interactionSource,
@@ -491,15 +486,24 @@ fun OracleHeroSection(
                 enabled = !isDestinyLocked || !isSpinning
             ) { onMovieClick(movie.id) }
     ) {
-        // Backdrop with enhanced gradient
-        AsyncImage(
-            model = movie.backdropUrl ?: com.example.cinescopesurat.R.drawable.placeholder_backdrop,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-            placeholder = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop),
-            error = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop)
-        )
+        // 5. FIXED: Crossfade with fully qualified R references (Removed the duplicate AsyncImage)
+        Crossfade(
+            targetState = movie,
+            animationSpec = tween(1000),
+            label = "movieCrossfade"
+        ) { currentMovie ->
+            AsyncImage(
+                model = currentMovie.backdropUrl ?: com.example.cinescopesurat.R.drawable.placeholder_backdrop,
+                contentDescription = currentMovie.title,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(visionBlur),
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop),
+                error = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop),
+                colorFilter = if (isSpinning) ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.3f) }) else null
+            )
+        }
 
         // Dynamic cinematic gradient overlay
         Box(
@@ -514,7 +518,7 @@ fun OracleHeroSection(
                 )
         )
 
-        // Spin shimmer effect overlay (only during spin)
+        // Spin shimmer effect overlay
         if (isSpinning) {
             Box(
                 modifier = Modifier
