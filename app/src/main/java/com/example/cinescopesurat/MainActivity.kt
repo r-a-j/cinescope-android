@@ -12,6 +12,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -86,36 +88,66 @@ fun MainScreen() {
     val liquidState = rememberLiquidState()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val currentRoute = currentDestination?.route ?: Route.Pulse::class.qualifiedName ?: ""
 
-    var scrollOffset by remember { mutableStateOf(0f) }
-
-    // Reset scroll on navigation
-    LaunchedEffect(currentDestination) {
-        scrollOffset = 0f
+    // Persist scroll offsets keyed by route using a Bundle-safe format
+    val scrollOffsetsState = rememberSaveable(
+        saver = Saver<MutableState<Map<String, Float>>, ArrayList<List<Any>>>(
+            save = { state -> 
+                ArrayList(state.value.entries.map { listOf(it.key, it.value) })
+            },
+            restore = { saved ->
+                mutableStateOf(saved.associate { it[0] as String to it[1] as Float })
+            }
+        )
+    ) { 
+        mutableStateOf(emptyMap()) 
     }
+    var scrollOffsets by scrollOffsetsState
 
-    val nestedScrollConnection = remember {
+    val nestedScrollConnection = remember(currentRoute) {
         object : NestedScrollConnection {
             override fun onPostScroll(
                 consumed: Offset,
                 available: Offset,
                 source: NestedScrollSource
             ): Offset {
+                val currentOffset = scrollOffsets[currentRoute] ?: 0f
+                var newOffset = currentOffset
+                
                 // Blur the header on any downward scroll (consumed.y < 0)
                 if (consumed.y < 0) {
-                    scrollOffset = (scrollOffset + consumed.y).coerceIn(-120f, 0f)
+                    newOffset = (currentOffset + consumed.y).coerceIn(-120f, 0f)
                 }
                 // Clear the header ONLY when upward scroll is unconsumed (meaning child reached top)
                 if (available.y > 0) {
-                    scrollOffset = (scrollOffset + available.y).coerceIn(-120f, 0f)
+                    newOffset = (currentOffset + available.y).coerceIn(-120f, 0f)
                 }
+
+                if (newOffset != currentOffset) {
+                    scrollOffsets = scrollOffsets.toMutableMap().apply {
+                        put(currentRoute, newOffset)
+                    }
+                }
+
                 return Offset.Zero
             }
         }
     }
 
-    // range 120f ensures a buttery smooth transition
-    val blurIntensityProvider = { (-scrollOffset / 120f).coerceIn(0f, 1f) }
+    // Configurable threshold (20%) and range
+    val blurThreshold = 0.1f
+    val blurRange = 120f
+    
+    val blurIntensityProvider = {
+        val offset = scrollOffsets[currentRoute] ?: 0f
+        val rawIntensity = (-offset / blurRange).coerceIn(0f, 1f)
+        if (rawIntensity < blurThreshold) {
+            0f
+        } else {
+            ((rawIntensity - blurThreshold) / (1f - blurThreshold)).coerceIn(0f, 1f)
+        }
+    }
 
     val showBottomBar = bottomNavItems.any { item ->
         currentDestination?.hasRoute(item.route::class) ?: false
