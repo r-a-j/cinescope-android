@@ -8,10 +8,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.*
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
@@ -53,21 +55,28 @@ fun OracleScreen(
     liquidState: LiquidState = rememberLiquidState(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
+    val isScrolling by remember {
+        derivedStateOf { listState.isScrollInProgress }
+    }
 
     OracleScreenContent(
         uiState = uiState,
+        listState = listState,
+        isScrolling = isScrolling,
         liquidState = liquidState,
         onMovieClick = onMovieClick,
-        onSpinAgain = { viewModel.spinAgain() }
-    )
+    ) { viewModel.spinAgain() }
 }
 
 @Composable
 fun OracleScreenContent(
     uiState: OracleUiState,
+    listState: LazyListState,
+    isScrolling: Boolean,
     liquidState: LiquidState,
     onMovieClick: (Int) -> Unit,
-    onSpinAgain: () -> Unit
+    onSpinAgain: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -78,66 +87,132 @@ fun OracleScreenContent(
                 onSpinAgain()
             }
         } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(top = 0.dp, bottom = 120.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 120.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                // ORACLE HERO - Oracle's Choice with in-place spinning animation
-                uiState.oraclesChoice?.let { movie ->
-                    OracleHeroSection(
-                        movie = movie,
-                        isSpinning = uiState.isSpinning,
-                        currentRoll = uiState.currentRoll,
-                        isDestinyLocked = uiState.isDestinyLocked,
-                        liquidState = liquidState,
-                        onMovieClick = onMovieClick
-                    )
+                // ORACLE HERO - Keyed for stability
+                item(key = "oracle_hero") {
+                    uiState.oraclesChoice?.let { movie ->
+                        OracleHeroSection(
+                            movie = movie,
+                            isSpinning = uiState.isSpinning,
+                            currentRoll = uiState.currentRoll,
+                            isDestinyLocked = uiState.isDestinyLocked,
+                            isScrolling = isScrolling,
+                            liquidState = liquidState,
+                            onMovieClick = onMovieClick
+                        )
+                    }
                 }
 
                 // RITUAL PROGRESS INDICATOR
-                RitualProgressIndicator(
-                    currentRoll = uiState.currentRoll,
-                    isDestinyLocked = uiState.isDestinyLocked
-                )
+                item(key = "ritual_progress") {
+                    RitualProgressIndicator(
+                        currentRoll = uiState.currentRoll,
+                        isDestinyLocked = uiState.isDestinyLocked
+                    )
+                }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                item { Spacer(modifier = Modifier.height(24.dp)) }
 
                 // SPIN AGAIN BUTTON & LIMIT
-                SpinAgainSection(
-                    isDestinyLocked = uiState.isDestinyLocked,
-                    currentRoll = uiState.currentRoll,
-                    isSpinning = uiState.isSpinning,
-                ) {
-                    onSpinAgain()
+                item(key = "spin_section") {
+                    SpinAgainSection(
+                        isDestinyLocked = uiState.isDestinyLocked,
+                        currentRoll = uiState.currentRoll,
+                        isSpinning = uiState.isSpinning,
+                        onSpin = onSpinAgain
+                    )
                 }
 
-                Spacer(modifier = Modifier.height(40.dp))
+                item { Spacer(modifier = Modifier.height(40.dp)) }
 
-                // PROPHECIES - Genre Tiles
+                // PROPHECIES - Exploded into separate items for better recycling
                 if (uiState.prophecies.isNotEmpty()) {
-                    SectionHeader("PROPHECIES", "THE ORACLE'S WISDOM")
-                    PropheciesBentoGrid(uiState.prophecies)
+                    item { SectionHeader("PROPHECIES", "THE ORACLE'S WISDOM") }
+                    
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp)
+                                .height(140.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            uiState.prophecies.take(2).forEachIndexed { index, (genre, count) ->
+                                OracleProphecyTile(
+                                    label = genre,
+                                    count = count,
+                                    isPrimary = index == 0,
+                                    isScrolling = isScrolling,
+                                    modifier = Modifier.weight(1f).fillMaxHeight()
+                                )
+                            }
+                        }
+                    }
+
+                    if (uiState.prophecies.size > 2) {
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp)
+                                    .height(120.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                uiState.prophecies.asSequence().drop(2).take(3).forEach { (genre, count) ->
+                                    OracleProphecyTile(
+                                        label = genre,
+                                        count = count,
+                                        isScrolling = isScrolling,
+                                        modifier = Modifier.weight(1f).fillMaxHeight()
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(40.dp))
+                item { Spacer(modifier = Modifier.height(40.dp)) }
 
                 // VIBE INSIGHTS
                 if (uiState.vibeInsights.isNotEmpty()) {
-                    SectionHeader("VIBE CHECK", "TODAY'S INSIGHTS")
-                    VibeInsightsSection(uiState.vibeInsights)
+                    item { SectionHeader("VIBE CHECK", "TODAY'S INSIGHTS") }
+                    
+                    items(uiState.vibeInsights) { insight ->
+                        VibeInsightCard(
+                            insight = insight,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+                        )
+                    }
                 }
 
-                // ROLL HISTORY - Previous rolls displayed as subdued tiles
+                // ROLL HISTORY - Displayed as individual items in LazyColumn for performance
                 if (uiState.rollHistory.size > 1) {
-                    Spacer(modifier = Modifier.height(40.dp))
-                    SectionHeader("HISTORIC VISIONS", "YOUR PAST ROLLS")
-                    RollHistoryGrid(uiState.rollHistory.dropLast(1), onMovieClick = onMovieClick)
+                    item {
+                        Spacer(modifier = Modifier.height(40.dp))
+                        SectionHeader("HISTORIC VISIONS", "YOUR PAST ROLLS")
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                    
+                    items(
+                        items = uiState.rollHistory.dropLast(1).reversed(),
+                        key = { it.id }
+                    ) { movie ->
+                        HistoryMovieTile(
+                            movie = movie, 
+                            onMovieClick = onMovieClick,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(32.dp))
+                item { Spacer(modifier = Modifier.height(32.dp)) }
             }
         }
     }
@@ -191,17 +266,15 @@ fun RitualProgressIndicator(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 32.dp, vertical = 24.dp), // Tighter padding to blend with card
+            .padding(horizontal = 32.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Seamless thread line with nodes
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(24.dp),
             contentAlignment = Alignment.Center
         ) {
-            // The track background line
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -209,7 +282,6 @@ fun RitualProgressIndicator(
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
             )
 
-            // The filled track line
             Row(modifier = Modifier.fillMaxWidth()) {
                 val fillWeight by animateFloatAsState(
                     targetValue = when (currentRoll) {
@@ -234,7 +306,6 @@ fun RitualProgressIndicator(
                                     )
                                 )
                             )
-                            .shadow(if (currentRoll > 0) 8.dp else 0.dp, spotColor = Color(0xFF00BCD4))
                     )
                 }
                 if (fillWeight < 1f) {
@@ -242,7 +313,6 @@ fun RitualProgressIndicator(
                 }
             }
 
-            // The Nodes
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -259,23 +329,28 @@ fun RitualProgressIndicator(
                         else -> MaterialTheme.colorScheme.surfaceVariant
                     }
 
-                    val nodeSize by animateDpAsState(
-                        targetValue = if (isActive) 12.dp else 8.dp,
+                    // Performance: Use graphicsLayer for scale instead of animating DP size (which triggers layout)
+                    val targetScale = if (isActive) 1.5f else 1.0f
+                    val animatedScale by animateFloatAsState(
+                        targetValue = targetScale,
                         animationSpec = spring(Spring.DampingRatioMediumBouncy),
-                        label = "nodeSize"
+                        label = "nodeScale"
                     )
 
                     Box(
                         modifier = Modifier
-                            .size(nodeSize)
+                            .size(8.dp)
+                            .graphicsLayer {
+                                scaleX = animatedScale
+                                scaleY = animatedScale
+                            }
                             .clip(CircleShape)
                             .background(nodeColor)
                             .border(
-                                width = if (isActive) 2.dp else 0.dp,
+                                width = if (isActive) 1.dp else 0.dp,
                                 color = if (isActive && !isDestinyLocked) Color(0xFF00BCD4) else Color.Transparent,
                                 shape = CircleShape
                             )
-                            .shadow(if (isActive || isCompleted) 12.dp else 0.dp, spotColor = nodeColor)
                     )
                 }
             }
@@ -283,7 +358,6 @@ fun RitualProgressIndicator(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Clean, minimalist status text
         Text(
             text = when {
                 isDestinyLocked -> "FATE CRYSTALLIZED"
@@ -300,25 +374,9 @@ fun RitualProgressIndicator(
 }
 
 @Composable
-fun RollHistoryGrid(
-    history: List<MediaItem>,
-    onMovieClick: (Int) -> Unit = {}
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        history.forEach { movie ->
-            HistoryMovieTile(movie = movie, onMovieClick = onMovieClick)
-        }
-    }
-}
-
-@Composable
 fun HistoryMovieTile(
     movie: MediaItem,
+    modifier: Modifier = Modifier,
     onMovieClick: (Int) -> Unit = {}
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -331,7 +389,7 @@ fun HistoryMovieTile(
     )
 
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
                 scaleX = scale
@@ -399,6 +457,7 @@ fun OracleHeroSection(
     isSpinning: Boolean = false,
     currentRoll: Int = 0,
     isDestinyLocked: Boolean = false,
+    isScrolling: Boolean = false,
     liquidState: LiquidState,
     onMovieClick: (Int) -> Unit = {}
 ) {
@@ -425,8 +484,9 @@ fun OracleHeroSection(
         label = "edgeOffset"
     )
 
+    // Performance: Use a slightly lower max blur for better performance on mid-range devices
     val visionBlur by animateDpAsState(
-        targetValue = if (isSpinning) 24.dp else 0.dp,
+        targetValue = if (isSpinning) 16.dp else 0.dp,
         animationSpec = tween(
             durationMillis = if (isSpinning) 800 else 1200,
             easing = FastOutSlowInEasing
@@ -440,22 +500,19 @@ fun OracleHeroSection(
         label = "destinyGlow"
     )
 
-    // THE MASTER CONTAINER
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(520.dp)
-            .clip(RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 32.dp, bottomEnd = 32.dp))
+            .clip(RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                enabled = !isDestinyLocked || !isSpinning
+                enabled = !isDestinyLocked && !isSpinning
             ) { onMovieClick(movie.id) },
         contentAlignment = Alignment.Center
     ) {
-        // --- THICK YELLOW AURA REMOVED ENTIRELY ---
-
-        // The Main Movie Image
+        // Optimized Image Loading and Blurring
         Crossfade(
             targetState = movie,
             animationSpec = tween(1000),
@@ -467,13 +524,23 @@ fun OracleHeroSection(
                 contentDescription = currentMovie.title,
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur(visionBlur),
+                    .graphicsLayer {
+                        // High Performance Blur: Use BlurEffect directly in graphicsLayer
+                        // to avoid recomposition when the blur radius changes.
+                        if (visionBlur > 0.dp) {
+                            renderEffect = BlurEffect(
+                                visionBlur.toPx(),
+                                visionBlur.toPx(),
+                                TileMode.Clamp
+                            )
+                        }
+                    },
                 contentScale = ContentScale.Crop,
                 colorFilter = if (isSpinning) ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.3f) }) else null
             )
         }
 
-        // Seamless Fade Gradient (Melts the bottom into your app background)
+        // Seamless Fade Gradient
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -486,45 +553,48 @@ fun OracleHeroSection(
                 )
         )
 
-        // Spin shimmer effect
+        // Spin shimmer effect - Optimized with graphicsLayer to avoid recomposition
         if (isSpinning) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.White.copy(alpha = 0.15f),
-                                Color.Transparent
-                            ),
-                            start = androidx.compose.ui.geometry.Offset(x = (spinPhase * 1000f), y = 0f),
-                            end = androidx.compose.ui.geometry.Offset(x = (spinPhase * 1000f) + 500f, y = 500f)
+                    .drawWithContent {
+                        drawRect(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.White.copy(alpha = 0.15f),
+                                    Color.Transparent
+                                ),
+                                // Use size.width to make the shimmer relative to container size
+                                start = androidx.compose.ui.geometry.Offset(x = (spinPhase * size.width * 2f) - size.width, y = 0f),
+                                end = androidx.compose.ui.geometry.Offset(x = (spinPhase * size.width * 2f), y = size.height)
+                            )
                         )
-                    )
+                    }
             )
         }
 
-        // The Sleek Animated Golden Ring (With Top-Half Dissolve Mask)
+        // The Sleek Animated Golden Ring (Optimized Compositing)
         if (isDestinyLocked) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        // Forces Compose to render this specific box into an offscreen buffer
-                        // so we can apply the erasure mask cleanly.
-                        alpha = 0.99f
+                        // Use CompositingStrategy.Offscreen ONLY when destiny is locked
+                        // and use the explicit API for modern Compose performance.
+                        compositingStrategy = CompositingStrategy.Offscreen
+                        alpha = destinyGlowAlpha
                     }
                     .drawWithContent {
-                        drawContent() // 1. Draws the border first
-
-                        // 2. Draws the erasure mask over it
+                        drawContent()
+                        // Erasure mask without alpha = 0.99f hacks
                         drawRect(
                             brush = Brush.verticalGradient(
-                                0.0f to Color.Transparent, // Top is completely erased
-                                0.5f to Color.Transparent, // Stays erased until exactly 50%
-                                0.7f to Color.Black,       // Smoothly fades into existence
-                                1.0f to Color.Black        // Bottom is fully visible
+                                0.0f to Color.Transparent,
+                                0.5f to Color.Transparent,
+                                0.7f to Color.Black,
+                                1.0f to Color.Black
                             ),
                             blendMode = androidx.compose.ui.graphics.BlendMode.DstIn
                         )
@@ -534,34 +604,44 @@ fun OracleHeroSection(
                         brush = Brush.linearGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color(0xFFFFD700).copy(alpha = destinyGlowAlpha * 0.4f),
-                                Color.White.copy(alpha = destinyGlowAlpha),
-                                Color(0xFFFFD700).copy(alpha = destinyGlowAlpha * 0.4f),
+                                Color(0xFFFFD700).copy(alpha = 0.4f),
+                                Color.White,
+                                Color(0xFFFFD700).copy(alpha = 0.4f),
                                 Color.Transparent
                             ),
                             start = androidx.compose.ui.geometry.Offset(edgeOffset - 800f, edgeOffset - 800f),
                             end = androidx.compose.ui.geometry.Offset(edgeOffset, edgeOffset)
                         ),
-                        // Match the bottom-only rounded corners from earlier
-                        shape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomStart = 32.dp, bottomEnd = 32.dp)
+                        shape = RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
                     )
             )
         }
 
         // Glass Frosted Card Content
         val glassColor = CinescopeTheme.customColors.glassBackground
+        
+        // Performance: Skip liquid shader while scrolling
+        val modifierWithLiquid = if (!isScrolling) {
+            Modifier.liquid(liquidState) {
+                frost = 4.dp
+                tint = glassColor.copy(alpha = 0.05f)
+            }
+        } else {
+            Modifier
+        }
+
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .fillMaxWidth()
                 .padding(16.dp)
                 .clip(RoundedCornerShape(24.dp))
-                .background(glassColor.copy(alpha = 0.03f))
-                .blur(16.dp)
-                .liquid(liquidState) {
-                    frost = 5.dp
-                    tint = glassColor.copy(alpha = 0.05f)
+                .background(glassColor.copy(alpha = 0.1f)) // Slightly more opaque when liquid is off
+                .graphicsLayer {
+                    // Use a slightly lower blur for the card backdrop for performance
+                    renderEffect = BlurEffect(12f, 12f, TileMode.Clamp)
                 }
+                .then(modifierWithLiquid)
         )
 
         Column(
@@ -660,75 +740,33 @@ fun OracleHeroSection(
     }
 }
 
-@Composable
-fun PropheciesBentoGrid(prophecies: List<Pair<String, Int>>) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // First Row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(140.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            prophecies.take(2).forEachIndexed { index, (genre, count) ->
-                OracleProphecyTile(
-                    label = genre,
-                    count = count,
-                    isPrimary = index == 0,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                )
-            }
-        }
-
-        // Second Row
-        if (prophecies.size > 2) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                prophecies.asSequence().drop(2).take(3).forEach { (genre, count) ->
-                    OracleProphecyTile(
-                        label = genre,
-                        count = count,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun OracleProphecyTile(
     label: String,
     count: Int,
     modifier: Modifier = Modifier,
-    isPrimary: Boolean = false
+    isPrimary: Boolean = false,
+    isScrolling: Boolean = false
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val infiniteTransition = rememberInfiniteTransition(label = "prophecyBounce$label")
-    val bounceOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 4f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = EaseInOutQuad),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "bounceOffset"
-    )
+    // Performance: Pause infinite animations during scroll
+    val bounceOffset = if (!isScrolling) {
+        val infiniteTransition = rememberInfiniteTransition(label = "prophecyBounce$label")
+        infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 4f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(2000, easing = EaseInOutQuad),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "bounceOffset"
+        ).value
+    } else {
+        0f
+    }
 
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
@@ -736,27 +774,33 @@ fun OracleProphecyTile(
         label = "propScale"
     )
 
-    val baseColor = when {
-        (isPrimary && label == "SCI-FI") -> Color(0xFF7C3AED)
-        label == "ACTION" -> Color(0xFFF85149)
-        label == "DRAMA" -> Color(0xFF79C0FF)
-        label == "INDIE" -> Color(0xFF4ADE80)
-        else -> MaterialTheme.colorScheme.surfaceVariant
+    // Optimized brush creation: remember the brush
+    val baseColor = remember(label, isPrimary) {
+        when {
+            isPrimary && label == "SCI-FI" -> Color(0xFF7C3AED)
+            label == "ACTION" -> Color(0xFFF85149)
+            label == "DRAMA" -> Color(0xFF79C0FF)
+            label == "INDIE" -> Color(0xFF4ADE80)
+            else -> Color(0xFF303030)
+        }
+    }
+    
+    val tileBrush = remember(baseColor) {
+        Brush.linearGradient(
+            listOf(
+                baseColor.copy(alpha = 0.8f),
+                baseColor.copy(alpha = 0.5f)
+            )
+        )
     }
 
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(28.dp))
-            .background(
-                Brush.linearGradient(
-                    listOf(
-                        baseColor.copy(alpha = 0.8f),
-                        baseColor.copy(alpha = 0.5f)
-                    )
-                )
-            )
+            .background(tileBrush)
             .graphicsLayer {
                 scaleX = scale
+                scaleY = scale
                 translationY = bounceOffset
             }
             .clickable(
@@ -786,22 +830,12 @@ fun OracleProphecyTile(
     }
 }
 
-@Composable
-fun VibeInsightsSection(insights: List<String>) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        insights.forEach { insight ->
-            VibeInsightCard(insight)
-        }
-    }
-}
 
 @Composable
-fun VibeInsightCard(insight: String) {
+fun VibeInsightCard(
+    insight: String,
+    modifier: Modifier = Modifier
+) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
@@ -812,7 +846,7 @@ fun VibeInsightCard(insight: String) {
     )
 
     Surface(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .graphicsLayer {
                 scaleX = scale
@@ -1055,15 +1089,16 @@ fun SpinAgainSection(
 @Composable
 fun MyScreenPreview() {
     CinescopeTheme {
-        OracleScreenContent(
-            uiState = OracleUiState(
-                oraclesChoice = MediaItem(1, "Inception", "8.8"),
-                prophecies = listOf("Action" to 5, "Sci-Fi" to 3),
-                vibeInsights = listOf("Mind-bending", "Thrilling")
-            ),
-            liquidState = rememberLiquidState(),
-            onMovieClick = {},
-            onSpinAgain = {}
-        )
+            OracleScreenContent(
+                uiState = OracleUiState(
+                    oraclesChoice = MediaItem(1, "Inception", "8.8"),
+                    prophecies = listOf("Action" to 5, "Sci-Fi" to 3),
+                    vibeInsights = listOf("Mind-bending", "Thrilling")
+                ),
+                listState = rememberLazyListState(),
+                isScrolling = false,
+                liquidState = rememberLiquidState(),
+                onMovieClick = {},
+            ) { }
     }
 }
