@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
@@ -523,14 +524,14 @@ fun CinematicCompactCard(
     onTvShowClick: (Int) -> Unit = {},
     onPersonClick: (Int) -> Unit = {}
 ) {
-    val (title, icon, color, imageRes) = when (result) {
-        is SearchResult.Movie -> Quadruple(result.item.title, Icons.Default.Movie, Color(0xFFF85149), result.item.posterRes)
-        is SearchResult.TvShow -> Quadruple(result.item.title, Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterRes)
-        is SearchResult.PersonResult -> Quadruple(result.person.name, Icons.Default.Person, Color(0xFFD2A8FF), result.person.imageRes)
+    val (title, icon, color, imageUrl) = when (result) {
+        is SearchResult.Movie -> Quadruple(result.item.title, Icons.Default.Movie, Color(0xFFF85149), result.item.posterUrl)
+        is SearchResult.TvShow -> Quadruple(result.item.title, Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterUrl)
+        is SearchResult.PersonResult -> Quadruple(result.person.name, Icons.Default.Person, Color(0xFFD2A8FF), result.person.profileUrl)
     }
 
-    val isPlaceholder = imageRes == com.example.cinescopesurat.R.drawable.placeholder || 
-                        imageRes == com.example.cinescopesurat.R.drawable.placeholder_backdrop
+    val placeholderRes = if (result is SearchResult.PersonResult) com.example.cinescopesurat.R.drawable.placeholder else com.example.cinescopesurat.R.drawable.placeholder_backdrop
+    val isPlaceholder = imageUrl == null
 
     var isPressed by remember { mutableStateOf(false) }
     val pressScale by animateFloatAsState(
@@ -565,11 +566,13 @@ fun CinematicCompactCard(
     ) {
         // THE HERO: FULL POSTER
         if (!isPlaceholder) {
-            Image(
-                painter = painterResource(imageRes),
+            AsyncImage(
+                model = imageUrl,
                 contentDescription = title,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(placeholderRes),
+                error = painterResource(placeholderRes)
             )
         } else {
             Box(
@@ -638,14 +641,14 @@ fun CompactResultCard(
     onTvShowClick: (Int) -> Unit = {},
     onPersonClick: (Int) -> Unit = {}
 ) {
-    val (title, icon, color, imageRes) = when (result) {
-        is SearchResult.Movie -> Quadruple(result.item.title, Icons.Default.Movie, Color(0xFFF85149), result.item.posterRes)
-        is SearchResult.TvShow -> Quadruple(result.item.title, Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterRes)
-        is SearchResult.PersonResult -> Quadruple(result.person.name, Icons.Default.Person, Color(0xFFD2A8FF), result.person.imageRes)
+    val (title, icon, color, imageUrl) = when (result) {
+        is SearchResult.Movie -> Quadruple(result.item.title, Icons.Default.Movie, Color(0xFFF85149), result.item.posterUrl)
+        is SearchResult.TvShow -> Quadruple(result.item.title, Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterUrl)
+        is SearchResult.PersonResult -> Quadruple(result.person.name, Icons.Default.Person, Color(0xFFD2A8FF), result.person.profileUrl)
     }
 
-    val isPlaceholder = imageRes == com.example.cinescopesurat.R.drawable.placeholder || 
-                        imageRes == com.example.cinescopesurat.R.drawable.placeholder_backdrop
+    val placeholderRes = if (result is SearchResult.PersonResult) com.example.cinescopesurat.R.drawable.placeholder else com.example.cinescopesurat.R.drawable.placeholder_backdrop
+    val isPlaceholder = imageUrl == null
 
     Surface(
         onClick = {
@@ -675,11 +678,13 @@ fun CompactResultCard(
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 if (!isPlaceholder) {
-                    Image(
-                        painter = painterResource(imageRes),
+                    AsyncImage(
+                        model = imageUrl,
                         contentDescription = null,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Crop,
+                        placeholder = painterResource(placeholderRes),
+                        error = painterResource(placeholderRes)
                     )
                 } else {
                     Icon(
@@ -745,10 +750,10 @@ fun SleekGridResultCard(
     onTvShowClick: (Int) -> Unit = {},
     onPersonClick: (Int) -> Unit = {}
 ) {
-    val (title, icon, color, imageRes) = when (result) {
-        is SearchResult.Movie -> Quadruple(result.item.title, Icons.Default.Movie, Color(0xFFF85149), result.item.posterRes)
-        is SearchResult.TvShow -> Quadruple(result.item.title, Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterRes)
-        is SearchResult.PersonResult -> Quadruple(result.person.name, Icons.Default.Person, Color(0xFFD2A8FF), result.person.imageRes)
+    val (title, icon, color, imageUrl) = when (result) {
+        is SearchResult.Movie -> Quadruple(result.item.title, Icons.Default.Movie, Color(0xFFF85149), result.item.posterUrl)
+        is SearchResult.TvShow -> Quadruple(result.item.title, Icons.Default.Tv, Color(0xFF79C0FF), result.item.posterUrl)
+        is SearchResult.PersonResult -> Quadruple(result.person.name, Icons.Default.Person, Color(0xFFD2A8FF), result.person.profileUrl)
     }
 
     // 1. CASCADING ANIMATION
@@ -778,8 +783,8 @@ fun SleekGridResultCard(
         label = "pressScale"
     )
 
-    val isPlaceholder = imageRes == com.example.cinescopesurat.R.drawable.placeholder || 
-                        imageRes == com.example.cinescopesurat.R.drawable.placeholder_backdrop
+    val placeholderRes = if (result is SearchResult.PersonResult) com.example.cinescopesurat.R.drawable.placeholder else com.example.cinescopesurat.R.drawable.placeholder_backdrop
+    val isPlaceholder = imageUrl == null
 
     Box(
         modifier = Modifier
@@ -810,11 +815,13 @@ fun SleekGridResultCard(
             }
     ) {
         if (!isPlaceholder) {
-            Image(
-                painter = painterResource(imageRes),
+            AsyncImage(
+                model = imageUrl,
                 contentDescription = title,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(placeholderRes),
+                error = painterResource(placeholderRes)
             )
         }
 

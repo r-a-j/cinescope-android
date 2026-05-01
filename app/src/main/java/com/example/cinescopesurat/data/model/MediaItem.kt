@@ -6,7 +6,9 @@ data class MediaItem(
     val id: Int,
     val title: String,
     val rating: String,
-    val posterRes: Int = R.drawable.placeholder,
-    val backdropRes: Int = R.drawable.placeholder_backdrop,
+    // val posterRes: Int = R.drawable.placeholder,
+    // val backdropRes: Int = R.drawable.placeholder_backdrop,
+    val posterUrl: String? = null,
+    val backdropUrl: String? = null,
     val type: String = "Movie"
 )

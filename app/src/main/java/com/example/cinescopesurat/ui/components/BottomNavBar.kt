@@ -66,7 +66,7 @@ fun BottomNavBar(
                 .onSizeChanged { barSize = it }
                 .clip(CircleShape)
                 .liquid(liquidState) {
-                    frost = 3.dp
+                    frost = 5.dp
                     refraction = 0.25f
                     curve = 1.0f
                     edge = 0.0f

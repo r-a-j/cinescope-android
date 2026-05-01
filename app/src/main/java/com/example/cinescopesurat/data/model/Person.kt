@@ -6,6 +6,7 @@ data class Person(
     val id: Int,
     val name: String,
     val role: String, // e.g., "Actor", "Director"
-    val imageRes: Int = R.drawable.placeholder,
+    val profileUrl: String? = null,
+    // val imageRes: Int = R.drawable.placeholder,
     val knownFor: String
 )

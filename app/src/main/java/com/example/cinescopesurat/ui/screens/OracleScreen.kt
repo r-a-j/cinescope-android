@@ -29,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cinescopesurat.data.model.MediaItem
@@ -246,11 +247,13 @@ fun OracleHeroSection(
             ) { onMovieClick(movie.id) }
     ) {
         // Backdrop
-        Image(
-            painter = painterResource(movie.backdropRes),
+        AsyncImage(
+            model = movie.backdropUrl ?: com.example.cinescopesurat.R.drawable.placeholder_backdrop,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop),
+            error = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop)
         )
 
         // Cinematic Gradient Overlay

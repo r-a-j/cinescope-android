@@ -21,6 +21,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.cinescopesurat.data.model.MediaItem
@@ -117,13 +118,15 @@ private fun MediaDetailsView(item: MediaItem, onBack: () -> Unit) {
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Backdrop Image
-        Image(
-            painter = painterResource(item.backdropRes),
+        AsyncImage(
+            model = item.backdropUrl ?: com.example.cinescopesurat.R.drawable.placeholder_backdrop,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(400.dp),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop),
+            error = painterResource(com.example.cinescopesurat.R.drawable.placeholder_backdrop)
         )
 
         // Gradient Overlay
@@ -242,13 +245,15 @@ private fun PersonDetailsView(person: Person, onBack: () -> Unit) {
     val customColors = CinescopeTheme.customColors
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Image(
-            painter = painterResource(person.imageRes),
+        AsyncImage(
+            model = person.profileUrl ?: com.example.cinescopesurat.R.drawable.placeholder,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(500.dp),
-            contentScale = ContentScale.Crop
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(com.example.cinescopesurat.R.drawable.placeholder),
+            error = painterResource(com.example.cinescopesurat.R.drawable.placeholder)
         )
 
         Box(
