@@ -78,141 +78,214 @@ fun OracleScreenContent(
     onMovieClick: (Int) -> Unit,
     onSpinAgain: () -> Unit,
 ) {
+    // Hoist the animations so the whole screen reacts to the spin
+    val chargeAlpha by animateFloatAsState(
+        targetValue = if (uiState.isSpinning) 1f else 0f,
+        animationSpec = tween(600, easing = EaseInOutCubic),
+        label = "globalChargeAlpha"
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "globalAurora")
+    val phase1 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(12000, easing = LinearEasing)), label = "p1"
+    )
+    val phase2 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(9500, easing = LinearEasing)), label = "p2"
+    )
+    val phase3 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(14000, easing = LinearEasing)), label = "p3"
+    )
+
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+        // Deep space dark background so the aurora pops perfectly
+        color = Color(0xFF0F1115)
     ) {
         if (uiState.error != null) {
-            OracleErrorState(message = uiState.error) {
-                onSpinAgain()
-            }
+            OracleErrorState(message = uiState.error) { onSpinAgain() }
         } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(bottom = 120.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                // ORACLE HERO - Keyed for stability
-                item(key = "oracle_hero") {
-                    uiState.oraclesChoice?.let { movie ->
-                        OracleHeroSection(
-                            movie = movie,
-                            isSpinning = uiState.isSpinning,
-                            currentRoll = uiState.currentRoll,
-                            isDestinyLocked = uiState.isDestinyLocked,
-                            isScrolling = isScrolling,
-                            liquidState = liquidState,
-                            onMovieClick = onMovieClick
-                        )
-                    }
-                }
+            Box(modifier = Modifier.fillMaxSize()) {
 
-                // RITUAL PROGRESS INDICATOR
-                item(key = "ritual_progress") {
-                    RitualProgressIndicator(
-                        currentRoll = uiState.currentRoll,
-                        isDestinyLocked = uiState.isDestinyLocked
-                    )
-                }
+                // --- THE GLOBAL AETHER (Background Aurora) ---
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            // Massive GPU-accelerated blur applied to the root layer
+                            renderEffect = BlurEffect(120f, 120f, TileMode.Decal)
+                            alpha = 0.6f + (chargeAlpha * 0.3f)
+                        }
+                        .drawWithContent {
+                            // Center the aurora slightly lower on the screen to bridge
+                            // the gap between the Hero Card and the Button.
+                            val centerX = size.width / 2f
+                            val centerY = size.height * 0.6f
 
-                item { Spacer(modifier = Modifier.height(24.dp)) }
-
-                // SPIN AGAIN BUTTON & LIMIT
-                item(key = "spin_section") {
-                    SpinAgainSection(
-                        isDestinyLocked = uiState.isDestinyLocked,
-                        currentRoll = uiState.currentRoll,
-                        isSpinning = uiState.isSpinning,
-                        onSpin = onSpinAgain
-                    )
-                }
-
-                item { Spacer(modifier = Modifier.height(40.dp)) }
-
-                // PROPHECIES - Exploded into separate items for better recycling
-                if (uiState.prophecies.isNotEmpty()) {
-                    item { SectionHeader("PROPHECIES", "THE ORACLE'S WISDOM") }
-                    
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp)
-                                .height(140.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            uiState.prophecies.take(2).forEachIndexed { index, (genre, count) ->
-                                OracleProphecyTile(
-                                    label = genre,
-                                    count = count,
-                                    isPrimary = index == 0,
-                                    isScrolling = isScrolling,
-                                    modifier = Modifier.weight(1f).fillMaxHeight()
+                            // Orb 1: Cyan (Massive)
+                            drawCircle(
+                                color = Color(0xFF00BCD4),
+                                radius = 1500f * (1f + (chargeAlpha * 0.2f)),
+                                center = androidx.compose.ui.geometry.Offset(
+                                    x = centerX + (kotlin.math.cos(phase1) * 300f),
+                                    y = centerY + (kotlin.math.sin(phase1) * 200f)
                                 )
-                            }
+                            )
+
+                            // Orb 2: Violet
+                            drawCircle(
+                                color = Color(0xFF7C3AED),
+                                radius = 1000f * (1f + (chargeAlpha * 0.2f)),
+                                center = androidx.compose.ui.geometry.Offset(
+                                    x = centerX + (kotlin.math.cos(phase2 + 2f) * -250f),
+                                    y = centerY + (kotlin.math.sin(phase2 + 1f) * 150f)
+                                )
+                            )
+
+                            // Orb 3: Gold (Core)
+                            drawCircle(
+                                color = Color(0xFFFFD700),
+                                radius = 800f * (1f + (chargeAlpha * 0.4f)),
+                                center = androidx.compose.ui.geometry.Offset(
+                                    x = centerX + (kotlin.math.sin(phase3) * 200f),
+                                    y = centerY + (kotlin.math.cos(phase3) * -100f)
+                                )
+                            )
+                        }
+                )
+
+                // --- THE FOREGROUND UI ---
+                // Sits cleanly ON TOP of the Aurora.
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 120.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    // ORACLE HERO
+                    item(key = "oracle_hero") {
+                        uiState.oraclesChoice?.let { movie ->
+                            OracleHeroSection(
+                                movie = movie,
+                                isSpinning = uiState.isSpinning,
+                                currentRoll = uiState.currentRoll,
+                                isDestinyLocked = uiState.isDestinyLocked,
+                                isScrolling = isScrolling,
+                                liquidState = liquidState,
+                                onMovieClick = onMovieClick
+                            )
                         }
                     }
 
-                    if (uiState.prophecies.size > 2) {
+                    // RITUAL PROGRESS INDICATOR
+                    item(key = "ritual_progress") {
+                        RitualProgressIndicator(
+                            currentRoll = uiState.currentRoll,
+                            isDestinyLocked = uiState.isDestinyLocked
+                        )
+                    }
+
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
+
+                    // SPIN AGAIN BUTTON
+                    item(key = "spin_section") {
+                        SpinAgainSection(
+                            isDestinyLocked = uiState.isDestinyLocked,
+                            currentRoll = uiState.currentRoll,
+                            isSpinning = uiState.isSpinning,
+                            liquidState = liquidState,
+                            onSpin = onSpinAgain
+                        )
+                    }
+
+                    item { Spacer(modifier = Modifier.height(40.dp)) }
+
+                    // PROPHECIES
+                    if (uiState.prophecies.isNotEmpty()) {
+                        item { SectionHeader("PROPHECIES", "THE ORACLE'S WISDOM") }
+
                         item {
-                            Spacer(modifier = Modifier.height(16.dp))
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 24.dp)
-                                    .height(120.dp),
+                                    .height(140.dp),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                uiState.prophecies.asSequence().drop(2).take(3).forEach { (genre, count) ->
+                                uiState.prophecies.take(2).forEachIndexed { index, (genre, count) ->
                                     OracleProphecyTile(
                                         label = genre,
                                         count = count,
+                                        isPrimary = index == 0,
                                         isScrolling = isScrolling,
                                         modifier = Modifier.weight(1f).fillMaxHeight()
                                     )
                                 }
                             }
                         }
+
+                        if (uiState.prophecies.size > 2) {
+                            item {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp)
+                                        .height(120.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    uiState.prophecies.asSequence().drop(2).take(3).forEach { (genre, count) ->
+                                        OracleProphecyTile(
+                                            label = genre,
+                                            count = count,
+                                            isScrolling = isScrolling,
+                                            modifier = Modifier.weight(1f).fillMaxHeight()
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
+
+                    item { Spacer(modifier = Modifier.height(40.dp)) }
+
+                    // VIBE INSIGHTS
+                    if (uiState.vibeInsights.isNotEmpty()) {
+                        item { SectionHeader("VIBE CHECK", "TODAY'S INSIGHTS") }
+
+                        items(uiState.vibeInsights) { insight ->
+                            VibeInsightCard(
+                                insight = insight,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    // ROLL HISTORY
+                    if (uiState.rollHistory.size > 1) {
+                        item {
+                            Spacer(modifier = Modifier.height(40.dp))
+                            SectionHeader("HISTORIC VISIONS", "YOUR PAST ROLLS")
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+
+                        items(
+                            items = uiState.rollHistory.dropLast(1).reversed(),
+                            key = { it.id }
+                        ) { movie ->
+                            HistoryMovieTile(
+                                movie = movie,
+                                onMovieClick = onMovieClick,
+                                modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    item { Spacer(modifier = Modifier.height(32.dp)) }
                 }
-
-                item { Spacer(modifier = Modifier.height(40.dp)) }
-
-                // VIBE INSIGHTS
-                if (uiState.vibeInsights.isNotEmpty()) {
-                    item { SectionHeader("VIBE CHECK", "TODAY'S INSIGHTS") }
-                    
-                    items(uiState.vibeInsights) { insight ->
-                        VibeInsightCard(
-                            insight = insight,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
-                        )
-                    }
-                }
-
-                // ROLL HISTORY - Displayed as individual items in LazyColumn for performance
-                if (uiState.rollHistory.size > 1) {
-                    item {
-                        Spacer(modifier = Modifier.height(40.dp))
-                        SectionHeader("HISTORIC VISIONS", "YOUR PAST ROLLS")
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                    
-                    items(
-                        items = uiState.rollHistory.dropLast(1).reversed(),
-                        key = { it.id }
-                    ) { movie ->
-                        HistoryMovieTile(
-                            movie = movie, 
-                            onMovieClick = onMovieClick,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
-                        )
-                    }
-                }
-
-                item { Spacer(modifier = Modifier.height(32.dp)) }
             }
         }
     }
@@ -895,35 +968,23 @@ fun SpinAgainSection(
     isDestinyLocked: Boolean,
     currentRoll: Int,
     isSpinning: Boolean,
+    liquidState: LiquidState,
     onSpin: () -> Unit
 ) {
     val spinsRemaining = maxOf(0, 2 - currentRoll)
 
-    val buttonText: String
-    val subtext: String
-    val buttonColor: Color
-    val isButtonEnabled: Boolean
-
-    when {
-        isDestinyLocked -> {
-            buttonText = "DESTINY SEALED"
-            subtext = "Your fate is written. Return tomorrow."
-            buttonColor = Color(0xFFFFB300)
-            isButtonEnabled = false
-        }
-        currentRoll >= 2 -> {
-            buttonText = "FINAL REVELATION"
-            subtext = "One last glimpse into the aether..."
-            buttonColor = Color(0xFF7C3AED)
-            isButtonEnabled = true
-        }
-        else -> {
-            buttonText = "SPIN FOR DESTINY"
-            subtext = "Rolls remaining: $spinsRemaining"
-            buttonColor = Color(0xFFFFB300)
-            isButtonEnabled = true
-        }
+    val buttonText = when {
+        isDestinyLocked -> "DESTINY SEALED"
+        currentRoll >= 2 -> "FINAL REVELATION"
+        else -> "SPIN FOR DESTINY"
     }
+    val subtext = when {
+        isDestinyLocked -> "Your fate is written. Return tomorrow."
+        currentRoll >= 2 -> "One last glimpse into the aether..."
+        else -> "Rolls remaining: $spinsRemaining"
+    }
+    val buttonColor = if (currentRoll >= 2 && !isDestinyLocked) Color(0xFF7C3AED) else Color(0xFFFFB300)
+    val isButtonEnabled = !isDestinyLocked
 
     val chargeAlpha by animateFloatAsState(
         targetValue = if (isSpinning) 1f else 0f,
@@ -944,201 +1005,97 @@ fun SpinAgainSection(
         label = "buttonScale"
     )
 
-    // The Animation Phases
-    val infiniteTransition = rememberInfiniteTransition(label = "aurora")
-    val phase1 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(7000, easing = LinearEasing)), label = "p1"
-    )
-    val phase2 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(5500, easing = LinearEasing)), label = "p2"
-    )
-    val phase3 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(8500, easing = LinearEasing)), label = "p3"
-    )
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // --- LIQUID GLASS LENS ---
         Box(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .height(64.dp)
+                .graphicsLayer {
+                    scaleX = buttonScale
+                    scaleY = buttonScale
+                }
+                // 1. Clip first to constrain the liquid effect
+                .clip(RoundedCornerShape(36.dp))
+                // 2. Apply the heavy frosted liquid glass shader matching BottomNavBar
+                .liquid(liquidState) {
+                    frost = 5.dp
+                    refraction = 0.25f
+                    curve = 1.0f
+                    edge = 0.0f
+                    saturation = 1.4f
+                    dispersion = 0.40f
+                    contrast = 1.25f
+                    // Dynamically tint the glass based on button state
+                    tint = if (isButtonEnabled) buttonColor.copy(alpha = 0.15f) else Color.DarkGray.copy(alpha = 0.15f)
+                }
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = isButtonEnabled
+                ) { onSpin() }
+                // 3. Add a sharp rim light to define the physical edge of the glass
+                .border(
+                    width = 1.dp,
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.4f),
+                            Color.Transparent,
+                            Color.White.copy(alpha = 0.1f)
+                        )
+                    ),
+                    shape = RoundedCornerShape(36.dp)
+                ),
             contentAlignment = Alignment.Center
         ) {
-
-            // --- THE LIVING AURORA (GPU Optimized) ---
-            if (isButtonEnabled) {
+            if (isSpinning && isButtonEnabled) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        // FIX 1: Apply the blur at the ROOT graphics layer of the aurora container.
-                        // This ensures all children are rendered flat, then blurred together,
-                        // completely eliminating overlapping bounding boxes.
-                        .graphicsLayer {
-                            renderEffect = BlurEffect(
-                                radiusX = 60f, // Massive pixel blur
-                                radiusY = 60f,
-                                edgeTreatment = TileMode.Decal // Prevents edge bleeding
-                            )
-                            // FIX 2: Boost the alpha slightly to compensate for the heavy blur
-                            alpha = 0.8f + (chargeAlpha * 0.2f)
-                        }
-                        // FIX 3: Draw directly on the Canvas instead of using separate nested Boxes with backgrounds.
-                        // Canvas drawing doesn't create separate layout nodes, meaning no clipping bounds!
-                        .drawWithContent {
-                            val centerX = size.width / 2f
-                            val centerY = size.height / 2f
-
-                            // Orb 1: Cyan
-                            drawCircle(
-                                color = Color(0xFF00BCD4),
-                                radius = 120f * (1f + chargeAlpha),
-                                center = androidx.compose.ui.geometry.Offset(
-                                    x = centerX + (kotlin.math.cos(phase1) * 200f),
-                                    y = centerY + (kotlin.math.sin(phase1) * 40f)
-                                )
-                            )
-
-                            // Orb 2: Violet
-                            drawCircle(
-                                color = Color(0xFF7C3AED),
-                                radius = 140f * (1f + chargeAlpha),
-                                center = androidx.compose.ui.geometry.Offset(
-                                    x = centerX + (kotlin.math.cos(phase2 + 2f) * -180f),
-                                    y = centerY + (kotlin.math.sin(phase2 + 1f) * 50f)
-                                )
-                            )
-
-                            // Orb 3: Gold
-                            drawCircle(
-                                color = Color(0xFFFFD700),
-                                radius = 160f * (1f + (chargeAlpha * 0.5f)),
-                                center = androidx.compose.ui.geometry.Offset(
-                                    x = centerX + (kotlin.math.sin(phase3) * 120f),
-                                    y = centerY + (kotlin.math.cos(phase3) * -30f)
-                                )
-                            )
-                        }
+                    modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = chargeAlpha * 0.2f))
                 )
             }
 
-            // --- THE TRUE GLASS BUTTON ---
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .height(64.dp)
-                    .graphicsLayer {
-                        scaleX = buttonScale
-                        scaleY = buttonScale
-                    }
-                    .clip(RoundedCornerShape(36.dp))
-                    .clickable(
-                        interactionSource = interactionSource,
-                        indication = null,
-                        enabled = isButtonEnabled
-                    ) { onSpin() }
-                    .background(
-                        if (isButtonEnabled) {
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color.White.copy(alpha = 0.12f),
-                                    Color.White.copy(alpha = 0.02f)
-                                )
-                            )
-                        } else {
-                            Brush.linearGradient(
-                                colors = listOf(
-                                    Color.Gray.copy(alpha = 0.1f),
-                                    Color.DarkGray.copy(alpha = 0.1f)
-                                )
-                            )
-                        }
-                    )
-                    .border(
-                        width = 1.dp,
-                        brush = Brush.linearGradient(
-                            colors = listOf(
-                                Color.White.copy(alpha = 0.4f),
-                                Color.Transparent,
-                                Color.White.copy(alpha = 0.1f)
-                            )
-                        ),
-                        shape = RoundedCornerShape(36.dp)
-                    ),
-                contentAlignment = Alignment.Center
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)
             ) {
-                // Flashbang charge effect
-                if (isSpinning && isButtonEnabled) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.White.copy(alpha = chargeAlpha * 0.2f))
-                    )
+                Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                    if (isSpinning && isButtonEnabled) {
+                        Icon(
+                            Icons.Default.Autorenew, contentDescription = null, tint = Color.White,
+                            modifier = Modifier.size(24.dp).graphicsLayer { rotationZ = (chargeAlpha * 1000f) % 360f }
+                        )
+                    } else {
+                        Icon(
+                            if (isButtonEnabled) Icons.Default.Casino else Icons.Default.LockClock,
+                            contentDescription = null, tint = if (isButtonEnabled) buttonColor else Color.Gray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 24.dp)
-                ) {
-                    // Icon
-                    Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-                        if (isSpinning && isButtonEnabled) {
-                            Icon(
-                                Icons.Default.Autorenew,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .graphicsLayer {
-                                        rotationZ = (chargeAlpha * 1000f) % 360f
-                                    }
-                            )
-                        } else {
-                            Icon(
-                                if (isButtonEnabled) Icons.Default.Casino else Icons.Default.LockClock,
-                                contentDescription = null,
-                                tint = if (isButtonEnabled) buttonColor else Color.Gray,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
+                Text(
+                    buttonText, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp,
+                    color = if (isButtonEnabled) Color.White else Color.Gray, fontSize = 15.sp,
+                    style = MaterialTheme.typography.labelLarge
+                )
 
-                    // Text
-                    Text(
-                        buttonText,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.5.sp,
-                        color = if (isButtonEnabled) Color.White else Color.Gray,
-                        fontSize = 15.sp,
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                Spacer(modifier = Modifier.weight(1f))
 
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    // Remaining rolls indicator
-                    if (isButtonEnabled) {
-                        Surface(
-                            shape = RoundedCornerShape(20.dp),
-                            color = Color.Black.copy(alpha = 0.3f),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
-                        ) {
-                            Text(
-                                spinsRemaining.toString(),
-                                fontWeight = FontWeight.Black,
-                                color = Color.White,
-                                modifier = Modifier
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                fontSize = 12.sp
-                            )
-                        }
+                if (isButtonEnabled) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp), color = Color.Black.copy(alpha = 0.3f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+                    ) {
+                        Text(
+                            spinsRemaining.toString(), fontWeight = FontWeight.Black, color = Color.White,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp), fontSize = 12.sp
+                        )
                     }
                 }
             }
@@ -1146,14 +1103,9 @@ fun SpinAgainSection(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Subtext
         Text(
-            subtext,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-            fontWeight = FontWeight.Medium,
-            fontSize = 12.sp,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            subtext, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+            fontWeight = FontWeight.Medium, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }
