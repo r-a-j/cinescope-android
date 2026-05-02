@@ -899,7 +899,6 @@ fun SpinAgainSection(
 ) {
     val spinsRemaining = maxOf(0, 2 - currentRoll)
 
-    // Determine button state and styling
     val buttonText: String
     val subtext: String
     val buttonColor: Color
@@ -927,15 +926,37 @@ fun SpinAgainSection(
     }
 
     val chargeAlpha by animateFloatAsState(
-        targetValue = if (isSpinning) 0.7f else 0.2f,
+        targetValue = if (isSpinning) 1f else 0f,
         animationSpec = tween(600, easing = EaseInOutCubic),
         label = "chargeAlpha"
     )
 
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
     val buttonScale by animateFloatAsState(
-        targetValue = if (isSpinning && isButtonEnabled) 0.88f else 1f,
+        targetValue = when {
+            isPressed && isButtonEnabled -> 0.94f
+            isSpinning && isButtonEnabled -> 0.97f
+            else -> 1f
+        },
         animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
         label = "buttonScale"
+    )
+
+    // The Animation Phases
+    val infiniteTransition = rememberInfiniteTransition(label = "aurora")
+    val phase1 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(7000, easing = LinearEasing)), label = "p1"
+    )
+    val phase2 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(5500, easing = LinearEasing)), label = "p2"
+    )
+    val phase3 by infiniteTransition.animateFloat(
+        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(8500, easing = LinearEasing)), label = "p3"
     )
 
     Column(
@@ -944,69 +965,119 @@ fun SpinAgainSection(
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Enhanced button with layered effects
         Box(
-            modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .height(64.dp)
-                .graphicsLayer {
-                    scaleX = buttonScale
-                    scaleY = buttonScale
-                }
-                .clickable(enabled = isButtonEnabled) { onSpin() }
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
         ) {
-            // Outer glow (only when active)
+
+            // --- THE LIVING AURORA (GPU Optimized) ---
             if (isButtonEnabled) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(36.dp))
-                        .background(buttonColor.copy(alpha = 0.15f))
-                        .blur(8.dp),
-                    contentAlignment = Alignment.Center
-                ) {}
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        // FIX 1: Apply the blur at the ROOT graphics layer of the aurora container.
+                        // This ensures all children are rendered flat, then blurred together,
+                        // completely eliminating overlapping bounding boxes.
+                        .graphicsLayer {
+                            renderEffect = BlurEffect(
+                                radiusX = 60f, // Massive pixel blur
+                                radiusY = 60f,
+                                edgeTreatment = TileMode.Decal // Prevents edge bleeding
+                            )
+                            // FIX 2: Boost the alpha slightly to compensate for the heavy blur
+                            alpha = 0.8f + (chargeAlpha * 0.2f)
+                        }
+                        // FIX 3: Draw directly on the Canvas instead of using separate nested Boxes with backgrounds.
+                        // Canvas drawing doesn't create separate layout nodes, meaning no clipping bounds!
+                        .drawWithContent {
+                            val centerX = size.width / 2f
+                            val centerY = size.height / 2f
+
+                            // Orb 1: Cyan
+                            drawCircle(
+                                color = Color(0xFF00BCD4),
+                                radius = 120f * (1f + chargeAlpha),
+                                center = androidx.compose.ui.geometry.Offset(
+                                    x = centerX + (kotlin.math.cos(phase1) * 200f),
+                                    y = centerY + (kotlin.math.sin(phase1) * 40f)
+                                )
+                            )
+
+                            // Orb 2: Violet
+                            drawCircle(
+                                color = Color(0xFF7C3AED),
+                                radius = 140f * (1f + chargeAlpha),
+                                center = androidx.compose.ui.geometry.Offset(
+                                    x = centerX + (kotlin.math.cos(phase2 + 2f) * -180f),
+                                    y = centerY + (kotlin.math.sin(phase2 + 1f) * 50f)
+                                )
+                            )
+
+                            // Orb 3: Gold
+                            drawCircle(
+                                color = Color(0xFFFFD700),
+                                radius = 160f * (1f + (chargeAlpha * 0.5f)),
+                                center = androidx.compose.ui.geometry.Offset(
+                                    x = centerX + (kotlin.math.sin(phase3) * 120f),
+                                    y = centerY + (kotlin.math.cos(phase3) * -30f)
+                                )
+                            )
+                        }
+                )
             }
 
-            // Main button container
+            // --- THE TRUE GLASS BUTTON ---
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth(0.9f)
+                    .height(64.dp)
+                    .graphicsLayer {
+                        scaleX = buttonScale
+                        scaleY = buttonScale
+                    }
                     .clip(RoundedCornerShape(36.dp))
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        enabled = isButtonEnabled
+                    ) { onSpin() }
                     .background(
                         if (isButtonEnabled) {
                             Brush.linearGradient(
                                 colors = listOf(
-                                    buttonColor,
-                                    buttonColor.copy(alpha = 0.85f)
+                                    Color.White.copy(alpha = 0.12f),
+                                    Color.White.copy(alpha = 0.02f)
                                 )
                             )
                         } else {
                             Brush.linearGradient(
                                 colors = listOf(
-                                    buttonColor.copy(alpha = 0.3f),
-                                    buttonColor.copy(alpha = 0.15f)
+                                    Color.Gray.copy(alpha = 0.1f),
+                                    Color.DarkGray.copy(alpha = 0.1f)
                                 )
                             )
                         }
                     )
                     .border(
-                        width = 2.dp,
-                        color = if (isDestinyLocked) Color(0xFFFFD700) else buttonColor,
-                        shape = RoundedCornerShape(36.dp)
-                    )
-                    .shadow(
-                        elevation = if (isButtonEnabled) 12.dp else 0.dp,
+                        width = 1.dp,
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.4f),
+                                Color.Transparent,
+                                Color.White.copy(alpha = 0.1f)
+                            )
+                        ),
                         shape = RoundedCornerShape(36.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                // Charge-up shimmer background
+                // Flashbang charge effect
                 if (isSpinning && isButtonEnabled) {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .clip(RoundedCornerShape(34.dp))
-                            .background(Color.White.copy(alpha = chargeAlpha * 0.3f))
+                            .background(Color.White.copy(alpha = chargeAlpha * 0.2f))
                     )
                 }
 
@@ -1015,37 +1086,38 @@ fun SpinAgainSection(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 20.dp)
+                        .padding(horizontal = 24.dp)
                 ) {
-                    // Icon with animation
+                    // Icon
                     Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
                         if (isSpinning && isButtonEnabled) {
                             Icon(
                                 Icons.Default.Autorenew,
                                 contentDescription = null,
-                                tint = Color.Black,
+                                tint = Color.White,
                                 modifier = Modifier
                                     .size(24.dp)
                                     .graphicsLayer {
-                                        rotationZ = (chargeAlpha * 360f) % 360f
+                                        rotationZ = (chargeAlpha * 1000f) % 360f
                                     }
                             )
                         } else {
                             Icon(
                                 if (isButtonEnabled) Icons.Default.Casino else Icons.Default.LockClock,
                                 contentDescription = null,
-                                tint = if (isButtonEnabled) Color.Black else Color.Gray,
+                                tint = if (isButtonEnabled) buttonColor else Color.Gray,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
                     }
 
+                    // Text
                     Text(
                         buttonText,
                         fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp,
-                        color = if (isButtonEnabled) Color.Black else Color.Gray,
-                        fontSize = 16.sp,
+                        letterSpacing = 1.5.sp,
+                        color = if (isButtonEnabled) Color.White else Color.Gray,
+                        fontSize = 15.sp,
                         style = MaterialTheme.typography.labelLarge
                     )
 
@@ -1055,14 +1127,15 @@ fun SpinAgainSection(
                     if (isButtonEnabled) {
                         Surface(
                             shape = RoundedCornerShape(20.dp),
-                            color = Color.Black.copy(alpha = 0.2f)
+                            color = Color.Black.copy(alpha = 0.3f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
                         ) {
                             Text(
                                 spinsRemaining.toString(),
                                 fontWeight = FontWeight.Black,
-                                color = Color.Black,
+                                color = Color.White,
                                 modifier = Modifier
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
                                 fontSize = 12.sp
                             )
                         }
@@ -1073,12 +1146,12 @@ fun SpinAgainSection(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Enhanced subtext with context
+        // Subtext
         Text(
             subtext,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.65f),
-            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+            fontWeight = FontWeight.Medium,
             fontSize = 12.sp,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
