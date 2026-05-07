@@ -4,6 +4,10 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -28,6 +32,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.cinescopesurat.ui.components.*
+import com.example.cinescopesurat.ui.theme.BoldOrange
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.*
 import io.github.fletchmckee.liquid.LiquidState
@@ -356,23 +361,57 @@ private fun MatrixTab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, label = "bg")
-    val contentColor by animateColorAsState(if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), label = "content")
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessLow),
+        label = "scale"
+    )
+    
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+        animationSpec = tween(300, easing = LinearOutSlowInEasing),
+        label = "bg"
+    )
+    
+    val contentColor by animateColorAsState(
+        targetValue = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+        label = "content"
+    )
 
     Surface(
         onClick = onClick,
+        interactionSource = interactionSource,
         shape = RoundedCornerShape(20.dp),
         color = backgroundColor,
-        modifier = modifier.fillMaxHeight()
+        modifier = modifier
+            .fillMaxHeight()
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
     ) {
         Row(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(icon, null, tint = contentColor, modifier = Modifier.size(20.dp))
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(20.dp)
+            )
             Spacer(modifier = Modifier.width(10.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = contentColor, letterSpacing = 1.sp)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Black,
+                color = contentColor,
+                letterSpacing = 1.sp
+            )
         }
     }
 }
@@ -389,25 +428,58 @@ private fun StatusPill(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
     ) {
-        Row(modifier = Modifier.padding(4.dp)) {
-            StatusPillItem("W/L", selectedStatus == VaultStatus.WATCHLIST, { onStatusSelected(VaultStatus.WATCHLIST) }, Modifier.weight(1f))
-            StatusPillItem("DONE", selectedStatus == VaultStatus.WATCHED, { onStatusSelected(VaultStatus.WATCHED) }, Modifier.weight(1f))
+        Box(modifier = Modifier.padding(4.dp)) {
+            val isWatchlist = selectedStatus == VaultStatus.WATCHLIST
+            
+            // THE SLIDING "LIQUID" BLOB
+            val bias by animateFloatAsState(
+                targetValue = if (isWatchlist) -1f else 1f,
+                animationSpec = spring(Spring.DampingRatioLowBouncy, Spring.StiffnessLow),
+                label = "bias"
+            )
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.5f)
+                    .align(BiasAlignment(horizontalBias = bias, verticalBias = 0f))
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(if (isWatchlist) BoldOrange else MaterialTheme.colorScheme.secondary)
+            )
+
+            Row {
+                StatusPillItem(
+                    label = "W/L", 
+                    selected = isWatchlist, 
+                    onClick = { onStatusSelected(VaultStatus.WATCHLIST) }, 
+                    modifier = Modifier.weight(1f)
+                )
+                StatusPillItem(
+                    label = "DONE", 
+                    selected = !isWatchlist, 
+                    onClick = { onStatusSelected(VaultStatus.WATCHED) }, 
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun StatusPillItem(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
-    val bgColor by animateColorAsState(if (selected) MaterialTheme.colorScheme.secondary else Color.Transparent)
     Box(
         modifier = modifier
             .fillMaxHeight()
             .clip(RoundedCornerShape(24.dp))
-            .background(bgColor)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = if (selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            text = label, 
+            style = MaterialTheme.typography.labelSmall, 
+            fontWeight = FontWeight.Black, 
+            color = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
     }
 }
 
