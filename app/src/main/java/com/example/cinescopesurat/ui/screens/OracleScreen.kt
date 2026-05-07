@@ -21,7 +21,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
@@ -29,6 +28,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -82,21 +83,7 @@ fun OracleScreenContent(
     val chargeAlpha by animateFloatAsState(
         targetValue = if (uiState.isSpinning) 1f else 0f,
         animationSpec = tween(600, easing = EaseInOutCubic),
-        label = "globalChargeAlpha"
-    )
-
-    val infiniteTransition = rememberInfiniteTransition(label = "globalAurora")
-    val phase1 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(12000, easing = LinearEasing)), label = "p1"
-    )
-    val phase2 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(9500, easing = LinearEasing)), label = "p2"
-    )
-    val phase3 by infiniteTransition.animateFloat(
-        initialValue = 0f, targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(14000, easing = LinearEasing)), label = "p3"
+        label = "chargeAlpha"
     )
 
     Surface(
@@ -109,54 +96,17 @@ fun OracleScreenContent(
         } else {
             Box(modifier = Modifier.fillMaxSize()) {
 
-                // --- THE GLOBAL AETHER (Background Aurora) ---
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            // Massive GPU-accelerated blur applied to the root layer
-                            renderEffect = BlurEffect(120f, 120f, TileMode.Decal)
-                            alpha = 0.6f + (chargeAlpha * 0.3f)
-                        }
-                        .drawWithContent {
-                            // Center the aurora slightly lower on the screen to bridge
-                            // the gap between the Hero Card and the Button.
-                            val centerX = size.width / 2f
-                            val centerY = size.height * 0.6f
+        // --- THE GLOBAL AETHER (Optimized Static Atmosphere) ---
+        AtmosphericSoul(
+            tint = when {
+                uiState.isDestinyLocked -> Color(0xFFFFD700) // Fate Gold
+                uiState.currentRoll == 1 -> Color(0xFF7C3AED) // Convergence Violet
+                else -> Color(0xFF00BCD4) // Revelation Cyan
+            },
+            chargeAlpha = chargeAlpha
+        )
 
-                            // Orb 1: Cyan (Massive)
-                            drawCircle(
-                                color = Color(0xFF00BCD4),
-                                radius = 1500f * (1f + (chargeAlpha * 0.2f)),
-                                center = androidx.compose.ui.geometry.Offset(
-                                    x = centerX + (kotlin.math.cos(phase1) * 300f),
-                                    y = centerY + (kotlin.math.sin(phase1) * 200f)
-                                )
-                            )
-
-                            // Orb 2: Violet
-                            drawCircle(
-                                color = Color(0xFF7C3AED),
-                                radius = 1000f * (1f + (chargeAlpha * 0.2f)),
-                                center = androidx.compose.ui.geometry.Offset(
-                                    x = centerX + (kotlin.math.cos(phase2 + 2f) * -250f),
-                                    y = centerY + (kotlin.math.sin(phase2 + 1f) * 150f)
-                                )
-                            )
-
-                            // Orb 3: Gold (Core)
-                            drawCircle(
-                                color = Color(0xFFFFD700),
-                                radius = 800f * (1f + (chargeAlpha * 0.4f)),
-                                center = androidx.compose.ui.geometry.Offset(
-                                    x = centerX + (kotlin.math.sin(phase3) * 200f),
-                                    y = centerY + (kotlin.math.cos(phase3) * -100f)
-                                )
-                            )
-                        }
-                )
-
-                // --- THE FOREGROUND UI ---
+        // --- THE FOREGROUND UI ---
                 // Sits cleanly ON TOP of the Aurora.
                 LazyColumn(
                     state = listState,
@@ -288,6 +238,58 @@ fun OracleScreenContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AtmosphericSoul(
+    tint: Color,
+    chargeAlpha: Float
+) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val width = size.width
+        val height = size.height
+        
+        // Static Aether Waves - Reactive to spinning "Charge"
+        val alphaBoost = 0.05f * chargeAlpha
+        
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(0f, height * 0.15f)
+            cubicTo(
+                width * 0.4f, height * (0.05f - (alphaBoost * 0.5f)),
+                width * 0.6f, height * (0.35f + (alphaBoost * 0.5f)),
+                width, height * 0.25f
+            )
+            lineTo(width, 0f)
+            lineTo(0f, 0f)
+            close()
+        }
+        
+        drawPath(
+            path = path,
+            brush = Brush.verticalGradient(
+                colors = listOf(tint.copy(alpha = 0.15f + alphaBoost), Color.Transparent)
+            )
+        )
+        
+        // Deep Ritual Wave
+        val path2 = androidx.compose.ui.graphics.Path().apply {
+            moveTo(0f, height * 0.6f)
+            quadraticTo(
+                width * 0.5f, height * (0.9f + alphaBoost),
+                width, height * 0.5f
+            )
+            lineTo(width, height)
+            lineTo(0f, height)
+            close()
+        }
+        
+        drawPath(
+            path = path2,
+            brush = Brush.verticalGradient(
+                colors = listOf(Color.Transparent, tint.copy(alpha = 0.08f + alphaBoost))
+            )
+        )
     }
 }
 
