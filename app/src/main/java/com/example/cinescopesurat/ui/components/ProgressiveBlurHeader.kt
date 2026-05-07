@@ -20,7 +20,7 @@ import io.github.fletchmckee.liquid.liquid
 fun ProgressiveBlurHeader(
     liquidState: LiquidState,
     modifier: Modifier = Modifier,
-    height: Dp = 140.dp,
+    height: Dp = 70.dp,
     intensityProvider: () -> Float
 ) {
     // 0. Remove manual tints. Let content color bleed purely through optics.
@@ -33,14 +33,12 @@ fun ProgressiveBlurHeader(
                 compositingStrategy = CompositingStrategy.Offscreen
             }
     ) {
-        // 1. High-Fidelity Logarithmic Stack (Indistinguishable from true progressive blur)
-        // We use carefully calculated overlaps to remove 'separation layers'.
-        
-        // Logarithmic steps provide the most natural visual falloff.
-        BlurLayer(liquidState, 64.dp, 0.0f, 0.55f, 1.4f, 0.3f) // Heavy peak
-        BlurLayer(liquidState, 32.dp, 0.15f, 0.75f, 1.2f, 0.15f) // Smooth mid
-        BlurLayer(liquidState, 12.dp, 0.40f, 0.90f, 1.1f, 0.05f) // Subtle edge
-        BlurLayer(liquidState, 2.dp, 0.70f, 1.00f, 1.0f, 0.0f) // Crystal integration
+        // 1. Hyper-Fidelity Hyper-Intensity Stack
+        // Compressed for a 70dp height to keep status bar heavily blurred while freeing content.
+        BlurLayer(liquidState, 96.dp, 0.0f, 0.70f, 1.8f, 0.4f) // Hyper-Peak
+        BlurLayer(liquidState, 48.dp, 0.15f, 0.85f, 1.5f, 0.2f) // Smooth mid
+        BlurLayer(liquidState, 16.dp, 0.45f, 0.95f, 1.2f, 0.1f) // Edge integration
+        BlurLayer(liquidState, 2.dp, 0.75f, 1.00f, 1.1f, 0.0f) // Final blend
     }
 }
 

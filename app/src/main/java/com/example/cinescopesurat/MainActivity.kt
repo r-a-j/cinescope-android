@@ -135,9 +135,9 @@ fun MainScreen() {
         }
     }
 
-    // Configurable threshold (20%) and range
+    // Configurable threshold (10%) and range
     val blurThreshold = 0.1f
-    val blurRange = 120f
+    val blurRange = 70f
     
     val blurIntensityProvider = {
         val offset = scrollOffsets[currentRoute] ?: 0f

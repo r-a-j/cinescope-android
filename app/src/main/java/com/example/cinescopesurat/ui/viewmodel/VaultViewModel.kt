@@ -13,6 +13,16 @@ enum class MovieVibe {
     HIGH_ENERGY
 }
 
+enum class VaultMediaType {
+    MOVIES,
+    TV_SHOWS
+}
+
+enum class VaultStatus {
+    WATCHLIST,
+    WATCHED
+}
+
 enum class VaultContext {
     UNIFIED_LIST,
     PHYSICAL_SHELF,
@@ -30,13 +40,15 @@ data class LibraryItem(
     val title: String,
     val posterUrl: String,
     val type: LibraryItemType,
+    val mediaType: VaultMediaType,
+    val status: VaultStatus,
     val progress: Float? = null,
     val episodeInfo: String? = null,
     val duration: String? = null,
     val hasAdaptationLink: Boolean = false,
     val rating: Double? = null,
     val isFeatured: Boolean = false,
-    val lastAccessed: String? = null // e.g., "2h ago"
+    val lastAccessed: String? = null
 )
 
 enum class MaintenanceBannerType {
@@ -52,6 +64,8 @@ data class MaintenanceBanner(
 )
 
 data class VaultUiState(
+    val selectedMediaType: VaultMediaType = VaultMediaType.MOVIES,
+    val selectedStatus: VaultStatus = VaultStatus.WATCHLIST,
     val selectedVibe: MovieVibe = MovieVibe.LOW_STAKES,
     val timeLimitMinutes: Int = 85,
     val matchCount: Int = 42,
@@ -76,6 +90,8 @@ data class VaultUiState(
             title = "Dune: Part Two",
             posterUrl = "https://example.com/dune2.jpg",
             type = LibraryItemType.ADAPTATION,
+            mediaType = VaultMediaType.MOVIES,
+            status = VaultStatus.WATCHLIST,
             hasAdaptationLink = true,
             rating = 8.9,
             isFeatured = true,
@@ -86,6 +102,8 @@ data class VaultUiState(
             title = "The Sopranos",
             posterUrl = "https://example.com/sopranos.jpg",
             type = LibraryItemType.WATCHING,
+            mediaType = VaultMediaType.TV_SHOWS,
+            status = VaultStatus.WATCHLIST,
             progress = 0.65f,
             episodeInfo = "S04E02",
             rating = 9.2
@@ -95,6 +113,8 @@ data class VaultUiState(
             title = "3 Body Problem",
             posterUrl = "https://example.com/threebody.jpg",
             type = LibraryItemType.ADAPTATION,
+            mediaType = VaultMediaType.TV_SHOWS,
+            status = VaultStatus.WATCHLIST,
             hasAdaptationLink = true,
             rating = 7.8
         ),
@@ -103,6 +123,8 @@ data class VaultUiState(
             title = "Heat",
             posterUrl = "https://example.com/heat.jpg",
             type = LibraryItemType.UNWATCHED,
+            mediaType = VaultMediaType.MOVIES,
+            status = VaultStatus.WATCHED,
             duration = "2h 15m",
             rating = 8.3
         ),
@@ -111,6 +133,8 @@ data class VaultUiState(
             title = "Oppenheimer",
             posterUrl = "https://example.com/oppenheimer.jpg",
             type = LibraryItemType.UNWATCHED,
+            mediaType = VaultMediaType.MOVIES,
+            status = VaultStatus.WATCHED,
             duration = "3h 0m",
             rating = 8.4
         ),
@@ -119,6 +143,8 @@ data class VaultUiState(
             title = "Succession",
             posterUrl = "https://example.com/succession.jpg",
             type = LibraryItemType.WATCHING,
+            mediaType = VaultMediaType.TV_SHOWS,
+            status = VaultStatus.WATCHED,
             progress = 0.9f,
             episodeInfo = "S04E10",
             rating = 8.9
@@ -131,6 +157,14 @@ class VaultViewModel @Inject constructor() : ViewModel() {
 
     private val _uiState = MutableStateFlow(VaultUiState())
     val uiState: StateFlow<VaultUiState> = _uiState.asStateFlow()
+
+    fun updateMediaType(mediaType: VaultMediaType) {
+        _uiState.update { it.copy(selectedMediaType = mediaType) }
+    }
+
+    fun updateStatus(status: VaultStatus) {
+        _uiState.update { it.copy(selectedStatus = status) }
+    }
 
     fun updateVibe(vibe: MovieVibe) {
         _uiState.update { 
@@ -155,8 +189,28 @@ class VaultViewModel @Inject constructor() : ViewModel() {
         _uiState.update { it.copy(selectedContext = context) }
     }
 
+    fun toggleItemStatus(itemId: String) {
+        _uiState.update { state ->
+            val updatedItems = state.libraryItems.map { item ->
+                if (item.id == itemId) {
+                    val newStatus = if (item.status == VaultStatus.WATCHLIST) VaultStatus.WATCHED else VaultStatus.WATCHLIST
+                    item.copy(status = newStatus)
+                } else {
+                    item
+                }
+            }
+            state.copy(libraryItems = updatedItems)
+        }
+    }
+
+    fun removeItem(itemId: String) {
+        _uiState.update { state ->
+            val updatedItems = state.libraryItems.filter { it.id != itemId }
+            state.copy(libraryItems = updatedItems)
+        }
+    }
+
     private fun calculateMatches(vibe: MovieVibe, minutes: Int): Int {
-        // Simulated logic: lower time or higher energy usually means fewer matches
         val base = if (vibe == MovieVibe.LOW_STAKES) 50 else 30
         return (base * (minutes / 120f) * (1.0 + (minutes % 10) / 10.0)).toInt().coerceAtLeast(0)
     }

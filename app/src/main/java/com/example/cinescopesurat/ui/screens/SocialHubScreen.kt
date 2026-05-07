@@ -29,7 +29,7 @@ fun SocialHubScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(top = 100.dp, bottom = 120.dp)
+                .padding(top = 80.dp, bottom = 120.dp)
         ) {
             
             CompromiseEngineCard(

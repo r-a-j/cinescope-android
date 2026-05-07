@@ -25,11 +25,19 @@ import androidx.compose.ui.graphics.Brush
 import com.example.cinescopesurat.ui.theme.BoldOrange
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
 
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.runtime.*
+import com.example.cinescopesurat.ui.viewmodel.VaultStatus
+
 @Composable
 fun LibraryGridItem(
+    modifier: Modifier = Modifier,
     item: LibraryItem,
-    modifier: Modifier = Modifier
+    onStatusToggle: () -> Unit = {},
+    onRemove: () -> Unit = {}
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier
             .aspectRatio(if (item.isFeatured) 1.2f else 0.7f)
@@ -67,7 +75,7 @@ fun LibraryGridItem(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // TOP SECTION: Badges
+                // TOP SECTION: Badges & Menu
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -78,7 +86,7 @@ fun LibraryGridItem(
                         Surface(
                             color = Color.Black.copy(alpha = 0.6f),
                             shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.blur(0.dp) // Glass effect placeholder
+                            modifier = Modifier.blur(0.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
@@ -104,19 +112,42 @@ fun LibraryGridItem(
                         Spacer(modifier = Modifier.width(1.dp))
                     }
 
-                    // Contextual Action/Icon
-                    if (item.hasAdaptationLink) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
-                            shape = RoundedCornerShape(8.dp)
+                    // Action Menu
+                    Box {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Book,
-                                contentDescription = "Adaptation",
+                                Icons.Default.MoreVert,
+                                contentDescription = "Options",
                                 tint = Color.White,
-                                modifier = Modifier
-                                    .padding(4.dp)
-                                    .size(14.dp)
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                        ) {
+                            DropdownMenuItem(
+                                text = { 
+                                    Text(if (item.status == VaultStatus.WATCHLIST) "Mark as Watched" else "Move to Watchlist") 
+                                },
+                                onClick = {
+                                    onStatusToggle()
+                                    showMenu = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Remove from Vault", color = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    onRemove()
+                                    showMenu = false
+                                }
                             )
                         }
                     }

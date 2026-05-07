@@ -39,7 +39,7 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp)
-                .padding(top = 160.dp, bottom = 120.dp) // Start behind the glass
+                .padding(top = 80.dp, bottom = 120.dp) // Start behind the glass
         ) {
             // ... rest of the column ...
 
