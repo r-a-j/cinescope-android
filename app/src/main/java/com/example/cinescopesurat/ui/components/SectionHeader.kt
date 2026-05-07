@@ -12,18 +12,19 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun SectionHeader(tag: String, title: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+    Column(modifier = modifier.padding(horizontal = 24.dp, vertical = 24.dp)) {
         Text(
-            tag,
-            style = MaterialTheme.typography.labelSmall,
+            tag.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Black,
             letterSpacing = 2.sp
         )
         Text(
             title,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Black,
+            color = MaterialTheme.colorScheme.onBackground,
             letterSpacing = (-1).sp
         )
     }
