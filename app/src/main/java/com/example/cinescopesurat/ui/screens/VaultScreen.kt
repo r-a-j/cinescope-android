@@ -1,41 +1,43 @@
 package com.example.cinescopesurat.ui.screens
 
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.cinescopesurat.ui.components.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
-import com.example.cinescopesurat.ui.viewmodel.LibraryItem
-import com.example.cinescopesurat.ui.viewmodel.VaultMediaType
-import com.example.cinescopesurat.ui.viewmodel.VaultStatus
-import com.example.cinescopesurat.ui.viewmodel.VaultViewModel
+import com.example.cinescopesurat.ui.viewmodel.*
+import io.github.fletchmckee.liquid.LiquidState
+import io.github.fletchmckee.liquid.liquid
+import io.github.fletchmckee.liquid.rememberLiquidState
 
 @Composable
 fun VaultScreen(
-    viewModel: VaultViewModel = hiltViewModel()
+    viewModel: VaultViewModel = hiltViewModel(),
+    liquidState: LiquidState = rememberLiquidState()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -48,84 +50,69 @@ fun VaultScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = 80.dp, bottom = 120.dp)
             ) {
+                // 1. BRAND HEADER & MISSION CONTROL
                 item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 16.dp)
-                    ) {
-                        Text(
-                            text = "THE VAULT",
-                            style = MaterialTheme.typography.displayMedium,
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            letterSpacing = (-2).sp
-                        )
-                        Text(
-                            text = "Your personal media command center.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                        )
-                    }
+                    VaultCommandHeader(insights = uiState.insights)
                 }
 
-                item {
-                    VaultCategoryTabs(
-                        selectedType = uiState.selectedMediaType,
-                        onTypeSelected = { viewModel.updateMediaType(it) }
-                    )
-                }
-
-                item {
-                    VaultStatusChips(
-                        selectedStatus = uiState.selectedStatus,
-                        onStatusSelected = { viewModel.updateStatus(it) }
-                    )
-                }
-
-                item {
-                    ContextSwitcher(
-                        selectedContext = uiState.selectedContext,
-                        onContextSelected = { viewModel.updateContext(it) }
-                    )
-                }
-
-                item { Spacer(modifier = Modifier.height(8.dp)) }
-
-                items(uiState.maintenanceBanners) { banner ->
-                    MaintenanceBanner(banner = banner)
-                }
-
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-
-                item {
-                    FitMyScheduleCard(
-                        selectedVibe = uiState.selectedVibe,
-                        timeLimit = uiState.timeLimitMinutes,
-                        matchCount = uiState.matchCount,
-                        onVibeSelected = { viewModel.updateVibe(it) },
-                        onTimeLimitChanged = { viewModel.updateTimeLimit(it) }
-                    )
-                }
-
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-
-                item {
-                    SectionHeader(
-                        tag = "YOUR LIBRARY",
-                        title = "Intelligent Collection"
-                    )
-                }
-
-                val filteredItems = uiState.libraryItems.filter {
-                    it.mediaType == uiState.selectedMediaType && it.status == uiState.selectedStatus
-                }
-
-                if (filteredItems.isEmpty()) {
+                // 2. ACTIVE MISSIONS (Promoted for priority)
+                val watchingItems = uiState.libraryItems.filter { (it.progress ?: 0f) > 0f }
+                if (watchingItems.isNotEmpty()) {
                     item {
-                        EmptyVaultState(uiState.selectedStatus)
+                        SectionHeader(tag = "CONTINUE", title = "Active Missions")
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        ) {
+                            items(watchingItems) { item ->
+                                LibraryGridItem(
+                                    item = item,
+                                    onStatusToggle = { viewModel.toggleItemStatus(item.id) },
+                                    onRemove = { viewModel.removeItem(item.id) },
+                                    modifier = Modifier.width(180.dp)
+                                )
+                            }
+                        }
                     }
-                } else {
+                }
+
+                // 3. MASTER CONTROLS (The Matrix)
+                item {
+                    VaultManagementMatrix(
+                        selectedType = uiState.selectedMediaType,
+                        selectedStatus = uiState.selectedStatus,
+                        selectedContext = uiState.selectedContext,
+                        onTypeSelected = { viewModel.updateMediaType(it) },
+                        onStatusSelected = { viewModel.updateStatus(it) },
+                        onContextSelected = { viewModel.updateContext(it) },
+                        liquidState = liquidState
+                    )
+                }
+
+                item { Spacer(modifier = Modifier.height(24.dp)) }
+
+                // 4. MAINTENANCE ENGINE (High-Fidelity Action Cards)
+                items(uiState.maintenanceBanners) { banner ->
+                    VaultMissionCard(banner = banner)
+                }
+
+                item { Spacer(modifier = Modifier.height(32.dp)) }
+
+                // 5. THE INTELLIGENT COLLECTION (The Dynamic Grid)
+                val filteredItems = uiState.libraryItems.filter {
+                    it.mediaType == uiState.selectedMediaType && it.status == uiState.selectedStatus && (it.progress ?: 0f) == 0f
+                }
+
+                if (filteredItems.isEmpty() && watchingItems.isEmpty()) {
+                    item { EmptyVaultState(uiState.selectedStatus) }
+                } else if (filteredItems.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            tag = uiState.selectedStatus.name,
+                            title = if (uiState.selectedStatus == VaultStatus.WATCHLIST) "Curated Watchlist" else "Watched Archive"
+                        )
+                    }
                     intelligentLibraryGrid(
                         libraryItems = filteredItems,
                         onStatusToggle = { viewModel.toggleItemStatus(it) },
@@ -134,138 +121,396 @@ fun VaultScreen(
                 }
             }
 
+            // PHYSICAL BRIDGE ACTION
             PhysicalBridgeFAB(
-                onScanClick = { /* TODO: Implement UPC scanning */ },
+                onScanClick = { /* TODO: UPC Scan Engine */ },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(24.dp)
-                    .padding(bottom = 80.dp) // Offset for bottom nav
+                    .padding(bottom = 80.dp)
             )
         }
     }
 }
 
 @Composable
-private fun VaultCategoryTabs(
-    selectedType: VaultMediaType,
-    onTypeSelected: (VaultMediaType) -> Unit
-) {
-    Row(
+private fun VaultCommandHeader(insights: List<VaultInsight>) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = 24.dp, vertical = 32.dp)
     ) {
-        VaultCategoryTab(
-            label = "Movies",
-            selected = selectedType == VaultMediaType.MOVIES,
-            onClick = { onTypeSelected(VaultMediaType.MOVIES) },
-            modifier = Modifier.weight(1f)
-        )
-        VaultCategoryTab(
-            label = "TV Shows",
-            selected = selectedType == VaultMediaType.TV_SHOWS,
-            onClick = { onTypeSelected(VaultMediaType.TV_SHOWS) },
-            modifier = Modifier.weight(1f)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column {
+                Text(
+                    text = "THE VAULT",
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    letterSpacing = (-3).sp,
+                    lineHeight = 56.sp
+                )
+                Text(
+                    text = "Mission Control",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 2.sp
+                )
+            }
+            
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // CURATE TOGGLE
+                Surface(
+                    onClick = { /* TODO */ },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Tune, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    }
+                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // VAULT HEALTH INDICATOR
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        progress = { 0.72f },
+                        modifier = Modifier.size(42.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        strokeWidth = 5.dp,
+                        strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                    )
+                    Text(
+                        "72%",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(40.dp))
+        
+        // INTELLIGENCE MODULES
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            IntelligenceModule(
+                insight = insights[0],
+                modifier = Modifier.weight(1.6f),
+                isHighlight = true
+            )
+            
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                IntelligenceModule(insight = insights[1])
+                IntelligenceModule(insight = insights[2])
+            }
+        }
     }
 }
 
 @Composable
-private fun VaultCategoryTab(
+private fun IntelligenceModule(
+    insight: VaultInsight,
+    modifier: Modifier = Modifier,
+    isHighlight: Boolean = false
+) {
+    Surface(
+        modifier = modifier.height(if (isHighlight) 140.dp else 64.dp),
+        shape = RoundedCornerShape(28.dp),
+        color = if (isHighlight) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.95f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+        border = if (!isHighlight) androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)) else null
+    ) {
+        Column(
+            modifier = Modifier.padding(if (isHighlight) 24.dp else 16.dp),
+            verticalArrangement = if (isHighlight) Arrangement.SpaceBetween else Arrangement.Center
+        ) {
+            Text(
+                insight.label, 
+                style = MaterialTheme.typography.labelSmall, 
+                color = if (isHighlight) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 1.5.sp
+            )
+            
+            if (isHighlight) {
+                Column {
+                    Text(
+                        insight.value,
+                        style = MaterialTheme.typography.displaySmall,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        letterSpacing = (-2).sp
+                    )
+                    insight.trend?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    insight.value,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VaultManagementMatrix(
+    selectedType: VaultMediaType,
+    selectedStatus: VaultStatus,
+    selectedContext: VaultContext,
+    onTypeSelected: (VaultMediaType) -> Unit,
+    onStatusSelected: (VaultStatus) -> Unit,
+    onContextSelected: (VaultContext) -> Unit,
+    liquidState: LiquidState
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // ROW 1: PRIMARY CATEGORIES (High Fidelity Tabs)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(24.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            MatrixTab(
+                label = "MOVIES",
+                icon = Icons.Default.Movie,
+                selected = selectedType == VaultMediaType.MOVIES,
+                onClick = { onTypeSelected(VaultMediaType.MOVIES) },
+                modifier = Modifier.weight(1f)
+            )
+            MatrixTab(
+                label = "TV SERIES",
+                icon = Icons.Default.Tv,
+                selected = selectedType == VaultMediaType.TV_SHOWS,
+                onClick = { onTypeSelected(VaultMediaType.TV_SHOWS) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // ROW 2: SUB-FILTERS (Status & Context)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // STATUS TOGGLE (Watchlist vs Watched)
+            StatusPill(
+                selectedStatus = selectedStatus,
+                onStatusSelected = onStatusSelected,
+                modifier = Modifier.weight(1f)
+            )
+            
+            // CONTEXT SELECTOR (The Physical Gear)
+            ContextGlassDial(
+                selectedContext = selectedContext,
+                onContextSelected = onContextSelected,
+                liquidState = liquidState,
+                modifier = Modifier.weight(1.5f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun MatrixTab(
     label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val contentColor by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
-        label = "tabContent"
-    )
+    val backgroundColor by animateColorAsState(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, label = "bg")
+    val contentColor by animateColorAsState(if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), label = "content")
 
-    Column(
-        modifier = modifier
-            .height(48.dp)
-            .clickable(onClick = onClick),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = backgroundColor,
+        modifier = modifier.fillMaxHeight()
     ) {
-        Text(
-            text = label.uppercase(),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Black,
-            color = contentColor,
-            letterSpacing = 1.sp
-        )
-        if (selected) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(icon, null, tint = contentColor, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = contentColor, letterSpacing = 1.sp)
+        }
+    }
+}
+
+@Composable
+private fun StatusPill(
+    selectedStatus: VaultStatus,
+    onStatusSelected: (VaultStatus) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.height(56.dp),
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
+    ) {
+        Row(modifier = Modifier.padding(4.dp)) {
+            StatusPillItem("W/L", selectedStatus == VaultStatus.WATCHLIST, { onStatusSelected(VaultStatus.WATCHLIST) }, Modifier.weight(1f))
+            StatusPillItem("DONE", selectedStatus == VaultStatus.WATCHED, { onStatusSelected(VaultStatus.WATCHED) }, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun StatusPillItem(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier) {
+    val bgColor by animateColorAsState(if (selected) MaterialTheme.colorScheme.secondary else Color.Transparent)
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(24.dp))
+            .background(bgColor)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Black, color = if (selected) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun VaultMissionCard(banner: MaintenanceBanner) {
+    val isAlert = banner.type == MaintenanceBannerType.ALERT
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 6.dp)
+            .height(100.dp),
+        shape = RoundedCornerShape(28.dp),
+        color = if (isAlert) Color(0xFF8B0000).copy(alpha = 0.9f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        border = if (!isAlert) androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.05f)) else null,
+        onClick = { /* TODO: Launch Mission */ }
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Box(
                 modifier = Modifier
-                    .padding(top = 4.dp)
-                    .size(width = 24.dp, height = 3.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(MaterialTheme.colorScheme.primary)
+                    .size(48.dp)
+                    .background(
+                        if (isAlert) Color.White.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        RoundedCornerShape(16.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isAlert) Icons.Default.Warning else Icons.Default.GpsFixed,
+                    contentDescription = null,
+                    tint = if (isAlert) Color.White else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(20.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = banner.title.uppercase(),
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Black,
+                    color = if (isAlert) Color.White else MaterialTheme.colorScheme.onSurface,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = banner.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (isAlert) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+            
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = if (isAlert) Color.White.copy(alpha = 0.4f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
             )
         }
     }
 }
 
 @Composable
-private fun VaultStatusChips(
-    selectedStatus: VaultStatus,
-    onStatusSelected: (VaultStatus) -> Unit
+private fun ContextGlassDial(
+    selectedContext: VaultContext,
+    onContextSelected: (VaultContext) -> Unit,
+    liquidState: LiquidState,
+    modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    val glassColor = CinescopeTheme.customColors.glassBackground
+    Box(
+        modifier = modifier
+            .height(56.dp)
+            .clip(RoundedCornerShape(28.dp))
+            .liquid(liquidState) {
+                frost = 6.dp
+                tint = glassColor.copy(alpha = 0.12f)
+            }
+            .padding(4.dp)
     ) {
-        VaultStatusChip(
-            label = "Watchlist",
-            selected = selectedStatus == VaultStatus.WATCHLIST,
-            onClick = { onStatusSelected(VaultStatus.WATCHLIST) }
-        )
-        VaultStatusChip(
-            label = "Watched",
-            selected = selectedStatus == VaultStatus.WATCHED,
-            onClick = { onStatusSelected(VaultStatus.WATCHED) }
-        )
-    }
-}
-
-@Composable
-private fun VaultStatusChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val backgroundColor by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent,
-        label = "chipBackground"
-    )
-    val contentColor by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
-        label = "chipContent"
-    )
-    val borderColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
-
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(50.dp),
-        color = backgroundColor,
-        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor),
-        modifier = Modifier.height(36.dp)
-    ) {
-        Box(
-            modifier = Modifier.padding(horizontal = 20.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                color = contentColor
-            )
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            VaultContext.entries.forEach { context ->
+                val isSelected = selectedContext == context
+                val icon = when(context) {
+                    VaultContext.UNIFIED_LIST -> Icons.Default.AllInclusive
+                    VaultContext.PHYSICAL_SHELF -> Icons.AutoMirrored.Filled.LibraryBooks
+                    VaultContext.PURGATORY -> Icons.Default.Cyclone
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f) else Color.Transparent)
+                        .clickable { onContextSelected(context) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, null, tint = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.3f), modifier = Modifier.size(20.dp))
+                }
+            }
         }
     }
 }
@@ -275,40 +520,28 @@ private fun EmptyVaultState(status: VaultStatus) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 60.dp, horizontal = 40.dp),
+            .padding(vertical = 80.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
-            imageVector = if (status == VaultStatus.WATCHLIST) Icons.Default.BookmarkBorder else Icons.Default.CheckCircleOutline,
+            imageVector = if (status == VaultStatus.WATCHLIST) Icons.Default.Inventory2 else Icons.Default.TaskAlt,
             contentDescription = null,
             modifier = Modifier.size(64.dp),
             tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.1f)
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = if (status == VaultStatus.WATCHLIST) "Your Watchlist is empty" else "Nothing watched yet",
+            text = if (status == VaultStatus.WATCHLIST) "Vault Initialized" else "Archive Empty",
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
         )
         Text(
-            text = "Go find your next favorite movie!",
+            text = "Acquire cinema from the Oracle to populate.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = { /* TODO: Route back to discovery */ },
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = "Explore Discovery",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Bold
-            )
-        }
     }
 }
 
@@ -317,29 +550,7 @@ private fun LazyListScope.intelligentLibraryGrid(
     onStatusToggle: (String) -> Unit,
     onRemove: (String) -> Unit
 ) {
-    // 1. ACTIVE SESSIONS (Resume Watching)
-    val watchingItems = libraryItems.filter { (it.progress ?: 0f) > 0f }
-    if (watchingItems.isNotEmpty()) {
-        item {
-            SectionHeader(tag = "RESUME", title = "Active Sessions")
-            LazyRow(
-                contentPadding = PaddingValues(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.padding(bottom = 24.dp)
-            ) {
-                this.items(watchingItems) { item ->
-                    LibraryGridItem(
-                        item = item,
-                        onStatusToggle = { onStatusToggle(item.id) },
-                        onRemove = { onRemove(item.id) },
-                        modifier = Modifier.width(160.dp)
-                    )
-                }
-            }
-        }
-    }
-
-    // 2. FEATURED HERO & GRID
+    // PRIMARY GRID (Featured & Regular)
     var i = 0
     while (i < libraryItems.size) {
         val item = libraryItems[i]
@@ -353,17 +564,13 @@ private fun LazyListScope.intelligentLibraryGrid(
                 )
             }
             i++
-        } else if ((item.progress ?: 0f) > 0f) {
-            // Already shown in Active Sessions, skip in main grid unless it's a specific view
-            i++
         } else {
             val rowItems = mutableListOf<LibraryItem>()
             repeat(3) {
-                if (i < libraryItems.size && !libraryItems[i].isFeatured && (libraryItems[i].progress ?: 0f) == 0f) {
+                if (i < libraryItems.size && !libraryItems[i].isFeatured) {
                     rowItems.add(libraryItems[i])
                     i++
-                } else if (i < libraryItems.size && (libraryItems[i].isFeatured || (libraryItems[i].progress ?: 0f) > 0f)) {
-                    // Break if we hit a featured item or a watching item we've already handled
+                } else if (i < libraryItems.size && libraryItems[i].isFeatured) {
                     return@repeat
                 }
             }

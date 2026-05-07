@@ -49,7 +49,16 @@ data class LibraryItem(
     val rating: Double? = null,
     val isFeatured: Boolean = false,
     val lastAccessed: String? = null,
-    val whyFeatured: String? = null // e.g., "Trending in your circle"
+    val whyFeatured: String? = null,
+    val releaseYear: String? = "2024",
+    val primaryGenre: String = "Sci-Fi"
+)
+
+data class VaultInsight(
+    val label: String,
+    val value: String,
+    val trend: String? = null,
+    val icon: String? = null
 )
 
 enum class MaintenanceBannerType {
@@ -71,6 +80,11 @@ data class VaultUiState(
     val timeLimitMinutes: Int = 85,
     val matchCount: Int = 42,
     val selectedContext: VaultContext = VaultContext.UNIFIED_LIST,
+    val insights: List<VaultInsight> = listOf(
+        VaultInsight("CINEMA QUOTA", "142h", "+12% this month"),
+        VaultInsight("GENRE FOCUS", "SCI-FI", "82% affinity"),
+        VaultInsight("VAULT HEALTH", "OPTIMAL", "12 items curated")
+    ),
     val maintenanceBanners: List<MaintenanceBanner> = listOf(
         MaintenanceBanner(
             title = "Watchlist Bankruptcy",
@@ -97,7 +111,9 @@ data class VaultUiState(
             rating = 8.9,
             isFeatured = true,
             lastAccessed = "Just now",
-            whyFeatured = "THE ORACLE'S TOP PICK"
+            whyFeatured = "THE ORACLE'S TOP PICK",
+            releaseYear = "2024",
+            primaryGenre = "Sci-Fi"
         ),
         LibraryItem(
             id = "sopranos",
@@ -108,7 +124,8 @@ data class VaultUiState(
             status = VaultStatus.WATCHLIST,
             progress = 0.65f,
             episodeInfo = "S04E02",
-            rating = 9.2
+            rating = 9.2,
+            primaryGenre = "Crime"
         ),
         LibraryItem(
             id = "three_body",
@@ -118,7 +135,8 @@ data class VaultUiState(
             mediaType = VaultMediaType.TV_SHOWS,
             status = VaultStatus.WATCHLIST,
             hasAdaptationLink = true,
-            rating = 7.8
+            rating = 7.8,
+            primaryGenre = "Sci-Fi"
         ),
         LibraryItem(
             id = "heat",
@@ -128,7 +146,8 @@ data class VaultUiState(
             mediaType = VaultMediaType.MOVIES,
             status = VaultStatus.WATCHED,
             duration = "2h 15m",
-            rating = 8.3
+            rating = 8.3,
+            primaryGenre = "Action"
         ),
         LibraryItem(
             id = "oppenheimer",
@@ -138,7 +157,8 @@ data class VaultUiState(
             mediaType = VaultMediaType.MOVIES,
             status = VaultStatus.WATCHED,
             duration = "3h 0m",
-            rating = 8.4
+            rating = 8.4,
+            primaryGenre = "Drama"
         ),
         LibraryItem(
             id = "succession",
@@ -149,7 +169,8 @@ data class VaultUiState(
             status = VaultStatus.WATCHED,
             progress = 0.9f,
             episodeInfo = "S04E10",
-            rating = 8.9
+            rating = 8.9,
+            primaryGenre = "Drama"
         )
     )
 )

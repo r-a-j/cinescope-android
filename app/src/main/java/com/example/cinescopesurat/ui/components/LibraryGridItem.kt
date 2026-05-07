@@ -37,7 +37,7 @@ fun FeaturedLibraryCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(320.dp)
+            .height(340.dp)
             .clip(RoundedCornerShape(32.dp)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
@@ -50,15 +50,15 @@ fun FeaturedLibraryCard(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Dynamic Overlay
+            // Cinematic Overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0f to Color.Black.copy(alpha = 0.2f),
-                            0.6f to Color.Black.copy(alpha = 0.4f),
-                            1f to Color.Black.copy(alpha = 0.9f)
+                            0f to Color.Black.copy(alpha = 0.1f),
+                            0.5f to Color.Black.copy(alpha = 0.4f),
+                            1f to Color.Black.copy(alpha = 0.95f)
                         )
                     )
             )
@@ -69,7 +69,7 @@ fun FeaturedLibraryCard(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // TOP: Status & Menu
+                // TOP: Badge & Menu
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -77,33 +77,35 @@ fun FeaturedLibraryCard(
                 ) {
                     item.whyFeatured?.let { reason ->
                         Surface(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = RoundedCornerShape(8.dp)
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                            shape = RoundedCornerShape(10.dp)
                         ) {
                             Text(
                                 text = reason,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = Color.White,
                                 fontWeight = FontWeight.Black,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                letterSpacing = 1.sp
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                letterSpacing = 1.2.sp
                             )
                         }
                     } ?: Spacer(modifier = Modifier.width(1.dp))
 
                     Box {
-                        IconButton(
+                        Surface(
                             onClick = { showMenu = true },
-                            modifier = Modifier
-                                .size(32.dp)
-                                .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                            shape = CircleShape,
+                            color = Color.Black.copy(alpha = 0.4f),
+                            modifier = Modifier.size(36.dp)
                         ) {
-                            Icon(
-                                Icons.Default.MoreVert,
-                                contentDescription = "Menu",
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    Icons.Default.MoreVert,
+                                    contentDescription = "Menu",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                         DropdownMenu(
                             expanded = showMenu,
@@ -122,7 +124,7 @@ fun FeaturedLibraryCard(
                     }
                 }
 
-                // BOTTOM: Title & Actions
+                // BOTTOM: Title & Main Action
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom,
@@ -131,37 +133,54 @@ fun FeaturedLibraryCard(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = item.title.uppercase(),
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Black,
                             color = Color.White,
-                            letterSpacing = (-0.5).sp
+                            letterSpacing = (-1).sp,
+                            lineHeight = 32.sp
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
                             Icon(
                                 Icons.Default.Star,
                                 contentDescription = null,
                                 tint = BoldOrange,
-                                modifier = Modifier.size(14.dp)
+                                modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "${item.rating} • ${item.duration ?: "FEATURED"}",
-                                style = MaterialTheme.typography.labelMedium,
+                                text = "${item.rating} • ${item.primaryGenre.uppercase()}",
+                                style = MaterialTheme.typography.labelLarge,
                                 color = Color.White.copy(alpha = 0.7f),
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
                             )
                         }
                     }
 
-                    Button(
-                        onClick = { /* TODO: Play trailer */ },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+                    Surface(
+                        onClick = { /* TODO */ },
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White,
+                        modifier = Modifier.padding(start = 16.dp)
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("RESUME", color = Color.Black, fontWeight = FontWeight.Black, fontSize = 12.sp)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "RESUME", 
+                                color = Color.Black, 
+                                fontWeight = FontWeight.Black, 
+                                fontSize = 13.sp,
+                                letterSpacing = 1.sp
+                            )
+                        }
                     }
                 }
             }
@@ -177,15 +196,16 @@ fun LibraryGridItem(
     onRemove: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val isWatching = (item.progress ?: 0f) > 0f
 
     Card(
         modifier = modifier
-            .aspectRatio(0.7f)
-            .clip(RoundedCornerShape(20.dp)),
+            .aspectRatio(0.72f)
+            .clip(RoundedCornerShape(24.dp)),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Poster image
+            // High-Res Poster
             AsyncImage(
                 model = item.posterUrl,
                 contentDescription = item.title,
@@ -193,7 +213,7 @@ fun LibraryGridItem(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Gradient Scrim for text readability
+            // Dynamic Gradient Scrim
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -201,50 +221,44 @@ fun LibraryGridItem(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color.Black.copy(alpha = 0.8f)
+                                Color.Black.copy(alpha = 0.2f),
+                                Color.Black.copy(alpha = 0.95f)
                             ),
-                            startY = 300f
+                            startY = 100f
                         )
                     )
             )
 
-            // Overlays based on type
+            // Content Overlay
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(12.dp),
+                    .padding(if (isWatching) 16.dp else 12.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // TOP SECTION: Badges & Menu
+                // TOP: Metadata
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.Top
                 ) {
-                    // Type Badge or Rating
                     if (item.rating != null) {
                         Surface(
-                            color = Color.Black.copy(alpha = 0.6f),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.blur(0.dp)
+                            color = Color.Black.copy(alpha = 0.5f),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.Star,
-                                    contentDescription = null,
-                                    tint = BoldOrange,
-                                    modifier = Modifier.size(10.dp)
-                                )
+                                Icon(Icons.Default.Star, null, tint = BoldOrange, modifier = Modifier.size(10.dp))
                                 Text(
                                     text = item.rating.toString(),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 11.sp
                                 )
                             }
                         }
@@ -254,18 +268,15 @@ fun LibraryGridItem(
 
                     // Action Menu
                     Box {
-                        IconButton(
+                        Surface(
                             onClick = { showMenu = true },
-                            modifier = Modifier
-                                .size(24.dp)
-                                .background(Color.Black.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                            modifier = Modifier.size(28.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            color = Color.Black.copy(alpha = 0.3f)
                         ) {
-                            Icon(
-                                Icons.Default.MoreVert,
-                                contentDescription = "Options",
-                                tint = Color.White,
-                                modifier = Modifier.size(16.dp)
-                            )
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.MoreVert, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            }
                         }
                         
                         DropdownMenu(
@@ -274,70 +285,45 @@ fun LibraryGridItem(
                             modifier = Modifier.background(MaterialTheme.colorScheme.surface)
                         ) {
                             DropdownMenuItem(
-                                text = { 
-                                    Text(if (item.status == VaultStatus.WATCHLIST) "Mark as Watched" else "Move to Watchlist") 
-                                },
-                                onClick = {
-                                    onStatusToggle()
-                                    showMenu = false
-                                }
+                                text = { Text(if (item.status == VaultStatus.WATCHLIST) "Mark as Watched" else "Move to Watchlist") },
+                                onClick = { onStatusToggle(); showMenu = false }
                             )
                             DropdownMenuItem(
                                 text = { Text("Remove from Vault", color = MaterialTheme.colorScheme.error) },
-                                onClick = {
-                                    onRemove()
-                                    showMenu = false
-                                }
+                                onClick = { onRemove(); showMenu = false }
                             )
                         }
                     }
                 }
 
-                // BOTTOM SECTION: Info
+                // BOTTOM: Identity
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         text = item.title,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = if (isWatching) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Black,
                         color = Color.White,
                         maxLines = 1,
-                        letterSpacing = 0.5.sp,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Progress or Duration
-                        when {
-                            item.progress != null -> {
-                                Text(
-                                    item.episodeInfo ?: "WATCHING",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                            item.duration != null -> {
-                                Text(
-                                    item.duration,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White.copy(alpha = 0.7f),
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
+                    if (item.episodeInfo != null || item.duration != null) {
+                        Text(
+                            text = (item.episodeInfo ?: item.duration)!!,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Bold
+                        )
                     }
 
-                    // Progress Bar
-                    item.progress?.let { progress ->
+                    if (isWatching) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        // Prominent Progress Bar
                         LinearProgressIndicator(
-                            progress = { progress },
+                            progress = { item.progress ?: 0f },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(4.dp)
+                                .height(3.dp)
                                 .clip(RoundedCornerShape(2.dp)),
                             color = MaterialTheme.colorScheme.primary,
                             trackColor = Color.White.copy(alpha = 0.2f),
