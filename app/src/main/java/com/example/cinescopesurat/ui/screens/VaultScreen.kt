@@ -7,6 +7,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.BiasAlignment
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.BlurredEdgeTreatment
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -45,19 +50,50 @@ fun VaultScreen(
     liquidState: LiquidState = rememberLiquidState()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    
+    // ATMOSPHERIC TRANSFORMATION ENGINE
+    val atmosphereColor by animateColorAsState(
+        targetValue = when (uiState.selectedContext) {
+            VaultContext.UNIFIED_LIST -> MaterialTheme.colorScheme.background
+            VaultContext.PHYSICAL_SHELF -> Color(0xFF1A1C1E) // Deep Slate
+            VaultContext.PURGATORY -> Color(0xFF0F0F0F) // Total Obsidian
+        },
+        animationSpec = tween(1000),
+        label = "atmosphere"
+    )
+
+    val tintColor by animateColorAsState(
+        targetValue = when (uiState.selectedContext) {
+            VaultContext.UNIFIED_LIST -> MaterialTheme.colorScheme.primary
+            VaultContext.PHYSICAL_SHELF -> Color(0xFF82B1FF) // Collector Blue
+            VaultContext.PURGATORY -> Color(0xFFFF5252) // Purgatory Red
+        },
+        animationSpec = tween(1000),
+        label = "tint"
+    )
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+        color = atmosphereColor
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            // THE ATMOSPHERIC SOUL (Background Layer)
+            AtmosphericSoul(
+                context = uiState.selectedContext,
+                tint = tintColor
+            )
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = 80.dp, bottom = 120.dp)
             ) {
                 // 1. BRAND HEADER & MISSION CONTROL
                 item {
-                    VaultCommandHeader(insights = uiState.insights)
+                    VaultCommandHeader(
+                        insights = uiState.insights,
+                        context = uiState.selectedContext,
+                        accentColor = tintColor
+                    )
                 }
 
                 // 2. ACTIVE MISSIONS (Promoted for priority)
@@ -139,7 +175,64 @@ fun VaultScreen(
 }
 
 @Composable
-private fun VaultCommandHeader(insights: List<VaultInsight>) {
+private fun AtmosphericSoul(
+    context: VaultContext,
+    tint: Color
+) {
+    // Zero-lag static wavy pattern
+    // This provides enough visual texture for the Liquid Glass to interact with 
+    // without any of the frame-dropping overhead of blurs or canvas animations.
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val width = size.width
+        val height = size.height
+        
+        // Static Wavy Pattern
+        val path = androidx.compose.ui.graphics.Path().apply {
+            moveTo(0f, height * 0.2f)
+            cubicTo(
+                width * 0.3f, height * 0.1f,
+                width * 0.7f, height * 0.4f,
+                width, height * 0.3f
+            )
+            lineTo(width, 0f)
+            lineTo(0f, 0f)
+            close()
+        }
+        
+        drawPath(
+            path = path,
+            brush = Brush.verticalGradient(
+                colors = listOf(tint.copy(alpha = 0.12f), Color.Transparent)
+            )
+        )
+        
+        // Lower Secondary Wave
+        val path2 = androidx.compose.ui.graphics.Path().apply {
+            moveTo(0f, height * 0.5f)
+            quadraticTo(
+                width * 0.5f, height * 0.8f,
+                width, height * 0.4f
+            )
+            lineTo(width, height)
+            lineTo(0f, height)
+            close()
+        }
+        
+        drawPath(
+            path = path2,
+            brush = Brush.verticalGradient(
+                colors = listOf(Color.Transparent, tint.copy(alpha = 0.05f))
+            )
+        )
+    }
+}
+
+@Composable
+private fun VaultCommandHeader(
+    insights: List<VaultInsight>,
+    context: VaultContext,
+    accentColor: Color
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -160,9 +253,13 @@ private fun VaultCommandHeader(insights: List<VaultInsight>) {
                     lineHeight = 56.sp
                 )
                 Text(
-                    text = "Mission Control",
+                    text = when(context) {
+                        VaultContext.UNIFIED_LIST -> "Mission Control"
+                        VaultContext.PHYSICAL_SHELF -> "Collector's Archive"
+                        VaultContext.PURGATORY -> "Neural Purge"
+                    },
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = accentColor,
                     fontWeight = FontWeight.Black,
                     letterSpacing = 2.sp
                 )
@@ -177,7 +274,7 @@ private fun VaultCommandHeader(insights: List<VaultInsight>) {
                     modifier = Modifier.size(44.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Tune, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Tune, null, tint = accentColor, modifier = Modifier.size(20.dp))
                     }
                 }
                 
@@ -194,8 +291,8 @@ private fun VaultCommandHeader(insights: List<VaultInsight>) {
                     CircularProgressIndicator(
                         progress = { 0.72f },
                         modifier = Modifier.size(42.dp),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        color = accentColor,
+                        trackColor = accentColor.copy(alpha = 0.1f),
                         strokeWidth = 5.dp,
                         strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                     )
@@ -219,15 +316,16 @@ private fun VaultCommandHeader(insights: List<VaultInsight>) {
             IntelligenceModule(
                 insight = insights[0],
                 modifier = Modifier.weight(1.6f),
-                isHighlight = true
+                isHighlight = true,
+                accentColor = accentColor
             )
             
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                IntelligenceModule(insight = insights[1])
-                IntelligenceModule(insight = insights[2])
+                IntelligenceModule(insight = insights[1], accentColor = accentColor)
+                IntelligenceModule(insight = insights[2], accentColor = accentColor)
             }
         }
     }
@@ -237,7 +335,8 @@ private fun VaultCommandHeader(insights: List<VaultInsight>) {
 private fun IntelligenceModule(
     insight: VaultInsight,
     modifier: Modifier = Modifier,
-    isHighlight: Boolean = false
+    isHighlight: Boolean = false,
+    accentColor: Color = MaterialTheme.colorScheme.primary
 ) {
     Surface(
         modifier = modifier.height(if (isHighlight) 140.dp else 64.dp),
@@ -252,7 +351,7 @@ private fun IntelligenceModule(
             Text(
                 insight.label, 
                 style = MaterialTheme.typography.labelSmall, 
-                color = if (isHighlight) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.primary,
+                color = if (isHighlight) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else accentColor,
                 fontWeight = FontWeight.Black,
                 letterSpacing = 1.5.sp
             )
