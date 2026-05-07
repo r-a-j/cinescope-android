@@ -48,7 +48,8 @@ data class LibraryItem(
     val hasAdaptationLink: Boolean = false,
     val rating: Double? = null,
     val isFeatured: Boolean = false,
-    val lastAccessed: String? = null
+    val lastAccessed: String? = null,
+    val whyFeatured: String? = null // e.g., "Trending in your circle"
 )
 
 enum class MaintenanceBannerType {
@@ -95,7 +96,8 @@ data class VaultUiState(
             hasAdaptationLink = true,
             rating = 8.9,
             isFeatured = true,
-            lastAccessed = "Just now"
+            lastAccessed = "Just now",
+            whyFeatured = "THE ORACLE'S TOP PICK"
         ),
         LibraryItem(
             id = "sopranos",

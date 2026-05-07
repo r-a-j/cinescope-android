@@ -25,6 +25,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.cinescopesurat.ui.components.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import com.example.cinescopesurat.ui.theme.CinescopeTheme
 import com.example.cinescopesurat.ui.viewmodel.LibraryItem
 import com.example.cinescopesurat.ui.viewmodel.VaultMediaType
@@ -315,27 +317,54 @@ private fun LazyListScope.intelligentLibraryGrid(
     onStatusToggle: (String) -> Unit,
     onRemove: (String) -> Unit
 ) {
+    // 1. ACTIVE SESSIONS (Resume Watching)
+    val watchingItems = libraryItems.filter { (it.progress ?: 0f) > 0f }
+    if (watchingItems.isNotEmpty()) {
+        item {
+            SectionHeader(tag = "RESUME", title = "Active Sessions")
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(bottom = 24.dp)
+            ) {
+                this.items(watchingItems) { item ->
+                    LibraryGridItem(
+                        item = item,
+                        onStatusToggle = { onStatusToggle(item.id) },
+                        onRemove = { onRemove(item.id) },
+                        modifier = Modifier.width(160.dp)
+                    )
+                }
+            }
+        }
+    }
+
+    // 2. FEATURED HERO & GRID
     var i = 0
     while (i < libraryItems.size) {
         val item = libraryItems[i]
         if (item.isFeatured) {
             item {
-                LibraryGridItem(
+                FeaturedLibraryCard(
                     item = item,
                     onStatusToggle = { onStatusToggle(item.id) },
                     onRemove = { onRemove(item.id) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                 )
             }
+            i++
+        } else if ((item.progress ?: 0f) > 0f) {
+            // Already shown in Active Sessions, skip in main grid unless it's a specific view
             i++
         } else {
             val rowItems = mutableListOf<LibraryItem>()
             repeat(3) {
-                if (i < libraryItems.size && !libraryItems[i].isFeatured) {
+                if (i < libraryItems.size && !libraryItems[i].isFeatured && (libraryItems[i].progress ?: 0f) == 0f) {
                     rowItems.add(libraryItems[i])
                     i++
+                } else if (i < libraryItems.size && (libraryItems[i].isFeatured || (libraryItems[i].progress ?: 0f) > 0f)) {
+                    // Break if we hit a featured item or a watching item we've already handled
+                    return@repeat
                 }
             }
 
